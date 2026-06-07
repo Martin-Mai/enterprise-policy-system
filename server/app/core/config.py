@@ -1,13 +1,16 @@
 """
 应用配置模块
-从 .env 文件中读取环境变量，提供全局配置对象
+从 server 文件夹下的 .env 文件中读取环境变量，提供全局配置对象
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# 加载项目根目录下的 .env 文件
-load_dotenv()
+# 获取 server 文件夹的绝对路径
+SERVER_DIR = Path(__file__).resolve().parent.parent.parent
+# 加载 server 文件夹下的 .env 文件
+load_dotenv(dotenv_path=SERVER_DIR / ".env")
 
 
 class Settings:
