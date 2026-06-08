@@ -1,43 +1,72 @@
-# 依赖
+# ==========================
+# 前端 (Vue3 / TypeScript)
+# ==========================
 node_modules/
 .pnp/
 .pnp.js
-
-# 编译输出
 dist/
 build/
 out/
 
-# 环境变量
+# 环境变量（前端）
 .env
 .env.local
 .env.*.local
-.env.example
 
-# 日志
+# 日志（前端）
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS
+# ==========================
+# 后端 (Python / FastAPI)
+# ==========================
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+env/
+*.pyc
+*.pyo
+*.so
+
+# 向量数据库与上传文件存储（运行时数据）
+server/chroma_data/
+server/storage/
+
+# 数据库迁移缓存（保留 .sql 脚本即可，忽略 __pycache__）
+server/migrations/__pycache__/
+
+# 日志
+*.log
+
+# ==========================
+# 测试数据集（二进制文件）
+# ==========================
+#test_datasets/*.pdf
+test_datasets/*.png
+test_datasets/*.jpg
+test_datasets/*.jpeg
+test_datasets/*.py
+
+# ==========================
+# 操作系统 & IDE
+# ==========================
 .DS_Store
 Thumbs.db
-
-# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Git
+# ==========================
+# Git 相关
+# ==========================
 .git/
 
-#python
-__pycache__/
-.pytest_cache/
-.venv/
-*.pyc 
-
-#cursor
+# ==========================
+# Cursor 编辑器（可选）
+# ==========================
 .cursorignore
+.cursor/

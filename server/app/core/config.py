@@ -31,6 +31,27 @@ class Settings:
     # JWT 令牌过期时间（天）
     ACCESS_TOKEN_EXPIRE_DAYS: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "7"))
 
+    # 文档上传存储目录（相对于 server 根目录）
+    STORAGE_DIR: Path = SERVER_DIR / "storage"
+
+    # ChromaDB 向量数据库持久化目录
+    CHROMA_DATA_DIR: Path = SERVER_DIR / "chroma_data"
+
+    # ChromaDB 集合名称
+    CHROMA_COLLECTION_NAME: str = os.getenv("CHROMA_COLLECTION_NAME", "enterprise_docs")
+
+    # Ollama 向量化服务地址
+    OLLAMA_EMBEDDING_URL: str = os.getenv(
+        "OLLAMA_EMBEDDING_URL",
+        "http://localhost:11434/api/embeddings",
+    )
+
+    # Ollama 向量化模型名称
+    OLLAMA_EMBEDDING_MODEL: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+
+    # 文档上传大小限制（字节），默认 10MB
+    MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))
+
 
 # 全局配置单例
 settings = Settings()
