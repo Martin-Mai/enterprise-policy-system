@@ -49,16 +49,18 @@ class DocumentDeleteResponse(BaseModel):
 
 
 class SearchResultItem(BaseModel):
-    """单条向量检索结果"""
+    """单条混合检索（RRF 融合）结果"""
 
-    chunk_text: str = Field(..., description="匹配的分块文本")
+    chunk_id: str = Field(..., description="文本块 ID，对应 document_chunks 主键")
+    text: str = Field(..., description="匹配的分块文本")
+    final_rrf_score: float = Field(..., description="RRF 融合最终得分，越高越相关")
     file_name: str = Field(..., description="来源文件名")
     page_no: int = Field(..., description="页码（Markdown 文件默认为 0）")
-    score: float = Field(..., description="相似度得分，越高越相关")
+    section_title: str = Field(default="", description="章节标题")
 
 
 class SearchResponse(BaseModel):
-    """向量检索响应模型"""
+    """混合检索响应模型"""
 
     query: str = Field(..., description="检索关键词")
     results: List[SearchResultItem] = Field(default_factory=list, description="检索结果列表")

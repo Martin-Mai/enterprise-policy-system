@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api import auth, admin, documents
+from app.services.search_service import get_bm25_index
 
 # 配置基础日志，便于后台文档处理任务输出调试信息
 logging.basicConfig(
@@ -48,6 +49,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(documents.router)
+
+
+@app.on_event("startup")
+def startup_build_bm25_index() -> None:
+    """应用启动时全量加载 MySQL 分块，构建 BM25 内存索引"""
+    get_bm25_index()
 
 
 @app.get("/", tags=["健康检查"])

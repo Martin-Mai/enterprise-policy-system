@@ -36,8 +36,8 @@ from app.services.document_processor import (
     DatabaseDeleteError,
     delete_document,
     process_document_background,
-    search_documents,
 )
+from app.services.search_service import hybrid_search
 
 router = APIRouter(prefix="/api/documents", tags=["文档管理"])
 
@@ -248,16 +248,16 @@ def list_documents(
 @router.get("/search", response_model=SearchResponse)
 async def search_document_chunks(
     q: str = Query(..., min_length=1, description="检索关键词"),
+    limit: int = Query(5, ge=1, le=20, description="返回结果数量"),
     current_user: User = Depends(get_current_user),
 ):
     """
-    向量检索接口（需登录）
-    在 ChromaDB 中搜索与关键词最相关的 5 个文本分块
+    混合检索接口（需登录）
+    ChromaDB 语义召回 + BM25 关键词召回，经 RRF 融合后返回 Top-K 文本分块
     """
-    # q 参数仅用于校验登录态，检索本身基于向量相似度
     _ = current_user
 
-    results = await search_documents(query=q, n_results=5)
+    results = await hybrid_search(query=q, limit=limit)
 
     return SearchResponse(
         query=q,

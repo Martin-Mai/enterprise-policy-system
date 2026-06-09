@@ -187,6 +187,11 @@ def delete_document(db: Session, document: Document) -> Dict[str, Any]:
         logger.exception("MySQL 删除 doc_id=%s 失败: %s", doc_id, exc)
         raise DatabaseDeleteError(f"MySQL 删除失败，doc_id={doc_id}") from exc
 
+    # 文档删除后刷新 BM25 内存索引
+    from app.services.search_service import get_bm25_index
+
+    get_bm25_index().refresh_index()
+
     return {
         "doc_id": doc_id,
         "message": "文档已彻底删除",
@@ -411,30 +416,37 @@ async def _embed_and_store_chunks(
             )
             continue
 
-        chunk_id = f"{doc_id}_{chunk_index}"
-        metadata = {
+        base_metadata = {
             "doc_id": doc_id,
+            "chunk_index": chunk_index,
             "page_no": page_no,
             "section_title": section_title,
             "file_name": file_name,
         }
 
-        # 写入 ChromaDB
-        collection.upsert(
-            ids=[chunk_id],
-            embeddings=[embedding],
-            documents=[chunk_text],
-            metadatas=[metadata],
-        )
-
-        # 写入 MySQL document_chunks 表
+        # 先写入 MySQL 获取自增主键，再以其作为 ChromaDB 向量 ID 与 RRF 融合标识
         db_chunk = DocumentChunk(
             doc_id=doc_id,
             chunk_text=chunk_text,
             chunk_index=chunk_index,
-            metadata_json=metadata,
+            metadata_json=base_metadata,
         )
         db.add(db_chunk)
+        db.flush()
+
+        chroma_metadata = {
+            **base_metadata,
+            "mysql_chunk_id": db_chunk.id,
+        }
+        db_chunk.metadata_json = chroma_metadata
+
+        chroma_id = str(db_chunk.id)
+        collection.upsert(
+            ids=[chroma_id],
+            embeddings=[embedding],
+            documents=[chunk_text],
+            metadatas=[chroma_metadata],
+        )
 
     db.commit()
 
@@ -472,6 +484,11 @@ def process_document_background(doc_id: int, file_path: str, file_name: str) -> 
         # 向量化并存储（在同步上下文中运行异步函数）
         asyncio.run(_embed_and_store_chunks(db, doc_id, file_name, chunks))
 
+        # 文档入库后刷新 BM25 内存索引
+        from app.services.search_service import get_bm25_index
+
+        get_bm25_index().refresh_index()
+
         logger.info(
             "文档 doc_id=%s 处理完成，共 %s 个分块",
             doc_id,
@@ -483,44 +500,3 @@ def process_document_background(doc_id: int, file_path: str, file_name: str) -> 
     finally:
         db.close()
 
-
-async def search_documents(query: str, n_results: int = 5) -> List[Dict[str, Any]]:
-    """
-    向量检索：将查询文本向量化后在 ChromaDB 中搜索相似分块
-    返回包含 chunk_text、file_name、page_no、score 的结果列表
-    """
-    query_embedding = await get_embedding(query)
-    if query_embedding is None:
-        logger.error("检索关键词向量化失败: %s", query)
-        return []
-
-    collection = get_chroma_collection()
-
-    # 集合为空时直接返回
-    if collection.count() == 0:
-        return []
-
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results,
-        include=["documents", "metadatas", "distances"],
-    )
-
-    search_items: List[Dict[str, Any]] = []
-    documents = results.get("documents", [[]])[0]
-    metadatas = results.get("metadatas", [[]])[0]
-    distances = results.get("distances", [[]])[0]
-
-    for doc_text, metadata, distance in zip(documents, metadatas, distances):
-        # ChromaDB 使用 cosine 距离，转换为相似度得分（1 - distance）
-        score = round(max(0.0, 1.0 - float(distance)), 4)
-        search_items.append(
-            {
-                "chunk_text": doc_text,
-                "file_name": metadata.get("file_name", ""),
-                "page_no": int(metadata.get("page_no", 0)),
-                "score": score,
-            }
-        )
-
-    return search_items
