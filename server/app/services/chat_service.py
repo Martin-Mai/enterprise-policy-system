@@ -7,9 +7,11 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.models.audit_log import AuditLog
 from app.models.conversation import Conversation
 from app.models.message import Message
 
@@ -227,3 +229,42 @@ def persist_chat_messages(
         raise
     finally:
         db.close()
+
+
+def log_audit_background(
+    user_id: int,
+    question: str,
+    retrieved_chunks: List[Dict[str, Any]],
+    answer: str,
+    citations: List[Dict[str, Any]],
+) -> None:
+    """
+    后台异步审计落库（由 FastAPI BackgroundTasks 在独立线程中延迟执行）。
+
+    【线程安全红线】：禁止复用请求级 db 会话，必须在函数内部独立创建并关闭连接。
+    """
+    with SessionLocal() as db:
+        try:
+            audit_record = AuditLog(
+                user_id=user_id,
+                question=question,
+                retrieved_chunks=retrieved_chunks,
+                answer=answer,
+                citations=citations or None,
+            )
+            db.add(audit_record)
+            db.commit()
+            logger.info(
+                "[AuditLog] 审计日志入库成功 | user_id=%s | audit_id=%s | chunks=%d | citations=%d",
+                user_id,
+                audit_record.id,
+                len(retrieved_chunks),
+                len(citations),
+            )
+        except SQLAlchemyError as exc:
+            db.rollback()
+            logger.exception(
+                "[AuditLog] 审计日志入库失败 | user_id=%s | error=%s",
+                user_id,
+                exc,
+            )

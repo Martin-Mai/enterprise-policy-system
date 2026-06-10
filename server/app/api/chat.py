@@ -8,7 +8,7 @@ import logging
 import uuid
 from typing import Any, AsyncIterator, Dict, List
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -17,6 +17,7 @@ from app.models.user import User
 from app.schemas.chat import ChatRequest, Citation
 from app.services.chat_service import (
     build_rag_prompt,
+    log_audit_background,
     parse_citations,
     persist_chat_messages,
     prepare_conversation_and_history,
@@ -47,6 +48,7 @@ def _citations_for_sse(citations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 @router.post("/stream")
 async def chat_stream(
     request: Request,
+    background_tasks: BackgroundTasks,
     body: ChatRequest,
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
@@ -68,14 +70,15 @@ async def chat_stream(
         question,
     )
 
-    retrieval_chunks: List[Dict[str, Any]] = await hybrid_search(question, limit=5)
-    prompt = build_rag_prompt(question, history_text, retrieval_chunks)
+    # 完整保留混合检索原始 Top-5 分块，供后台审计落库使用
+    retrieved_chunks: List[Dict[str, Any]] = await hybrid_search(question, limit=5)
+    prompt = build_rag_prompt(question, history_text, retrieved_chunks)
 
     logger.info(
         "[SSE Chat] Session: %s | History Chunks: %d | Retrieval Count: %d",
         session_id,
         history_count,
-        len(retrieval_chunks),
+        len(retrieved_chunks),
     )
 
     async def event_generator() -> AsyncIterator[str]:
@@ -114,9 +117,10 @@ async def chat_stream(
                     full_answer + "[用户中断]" if full_answer else "[用户中断]"
                 )
 
+            persist_success: bool = False
             if question:
                 citations = (
-                    parse_citations(answer_to_save, retrieval_chunks)
+                    parse_citations(answer_to_save, retrieved_chunks)
                     if answer_to_save
                     else []
                 )
@@ -128,11 +132,23 @@ async def chat_stream(
                         answer_to_save,
                         citations,
                     )
+                    persist_success = True
                 except Exception as exc:
                     logger.exception(
                         "[SSE Chat] 落库失败 | session_id=%s | error=%s",
                         session_id,
                         exc,
+                    )
+
+                # 消息落库成功后，非阻塞投递后台审计任务，不影响 SSE 吐字
+                if persist_success and answer_to_save:
+                    background_tasks.add_task(
+                        log_audit_background,
+                        current_user.id,
+                        question,
+                        retrieved_chunks,
+                        answer_to_save,
+                        citations,
                     )
 
             if not disconnected and not ollama_error and answer_to_save:

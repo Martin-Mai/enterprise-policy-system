@@ -21,6 +21,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 声明式基类，所有 ORM 模型都继承自此类
 Base = declarative_base()
 
+# 导入所有 ORM 模型，确保 SQLAlchemy 元数据能识别并创建对应表
+import app.models.user  # noqa: F401, E402
+import app.models.document  # noqa: F401, E402
+import app.models.conversation  # noqa: F401, E402
+import app.models.message  # noqa: F401, E402
+import app.models.audit_log  # noqa: F401, E402
+import app.models.feedback  # noqa: F401, E402
+
 
 def get_db():
     """
