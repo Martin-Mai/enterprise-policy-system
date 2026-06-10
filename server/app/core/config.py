@@ -49,6 +49,18 @@ class Settings:
     # Ollama 向量化模型名称
     OLLAMA_EMBEDDING_MODEL: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
 
+    # Ollama 文本生成接口地址
+    OLLAMA_GENERATE_URL: str = os.getenv(
+        "OLLAMA_GENERATE_URL",
+        "http://localhost:11434/api/generate",
+    )
+
+    # Ollama 对话生成模型名称
+    OLLAMA_CHAT_MODEL: str = os.getenv("OLLAMA_CHAT_MODEL", "qwen2.5:7b")
+
+    # Ollama 流式生成超时（秒）
+    OLLAMA_GENERATE_TIMEOUT: float = float(os.getenv("OLLAMA_GENERATE_TIMEOUT", "120"))
+
     # 文档上传大小限制（字节），默认 10MB
     MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))
 

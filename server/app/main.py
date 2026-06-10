@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import auth, admin, documents
+from app.api import auth, admin, documents, chat
 from app.services.search_service import get_bm25_index
 
 # 配置基础日志，便于后台文档处理任务输出调试信息
@@ -22,6 +22,8 @@ logging.basicConfig(
 # 导入所有模型，确保 SQLAlchemy 能够识别并创建对应的表
 import app.models.user  # noqa: F401
 import app.models.document  # noqa: F401
+import app.models.conversation  # noqa: F401
+import app.models.message  # noqa: F401
 
 # 启动时自动创建 storage 与 chroma_data 目录
 settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -49,6 +51,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(documents.router)
+app.include_router(chat.router)
 
 
 @app.on_event("startup")

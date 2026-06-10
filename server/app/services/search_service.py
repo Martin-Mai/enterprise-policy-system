@@ -241,10 +241,16 @@ async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=search_limit,
-            include=["documents", "metadatas", "distances", "ids"],
+            # include=["documents", "metadatas", "distances", "ids"],
+            include=["documents", "metadatas"]  # 删掉 "ids"
         )
 
         search_items: List[Dict[str, Any]] = []
+
+        # ✅ 新增：空值防护，防止results为None时报错    
+        if not results:
+            return []
+
         documents = results.get("documents", [[]])[0]
         metadatas = results.get("metadatas", [[]])[0]
         distances = results.get("distances", [[]])[0]
