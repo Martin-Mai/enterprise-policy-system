@@ -4,13 +4,14 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import AuthLayout from '@/components/AuthLayout.vue'
-import { useAuthStore } from '@/stores/authStore'
+import { registerUser } from '@/api/auth'
 
-const authStore = useAuthStore()
 const router = useRouter()
 
 const username = ref('')
 const password = ref('')
+const confirmPassword = ref('')
+const loading = ref(false)
 
 async function handleSubmit(): Promise<void> {
   if (!username.value.trim() || !password.value) {
@@ -18,18 +19,26 @@ async function handleSubmit(): Promise<void> {
     return
   }
 
+  if (confirmPassword.value && confirmPassword.value !== password.value) {
+    ElMessage.warning('两次输入的密码不一致')
+    return
+  }
+
+  loading.value = true
   try {
-    await authStore.login({
+    await registerUser({
       username: username.value.trim(),
       password: password.value,
     })
-    ElMessage.success('登录成功')
-    router.push({ name: 'Chat' })
+    ElMessage.success('注册成功，请登录')
+    router.push({ name: 'Login' })
   } catch (err: unknown) {
     const msg =
       (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      ?? '登录失败，请检查账号密码'
-    ElMessage.error(typeof msg === 'string' ? msg : '登录失败')
+      ?? '注册失败，请稍后重试'
+    ElMessage.error(typeof msg === 'string' ? msg : '注册失败')
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -38,8 +47,8 @@ async function handleSubmit(): Promise<void> {
   <AuthLayout>
     <div class="form-card">
       <header class="form-card__header">
-        <h1 class="form-card__title">欢迎回来</h1>
-        <p class="form-card__subtitle">登录企业智能知识库，开启高效问答</p>
+        <h1 class="form-card__title">创建账号</h1>
+        <p class="form-card__subtitle">加入企业智能知识库，畅享智能检索与问答</p>
       </header>
 
       <el-form class="form-card__form" @submit.prevent="handleSubmit">
@@ -62,27 +71,35 @@ async function handleSubmit(): Promise<void> {
             size="large"
             show-password
             :prefix-icon="Lock"
+          />
+        </el-form-item>
+
+        <el-form-item>
+          <el-input
+            v-model="confirmPassword"
+            class="underline-input"
+            type="password"
+            placeholder="确认密码（可选）"
+            size="large"
+            show-password
+            :prefix-icon="Lock"
             @keyup.enter="handleSubmit"
           />
         </el-form-item>
 
-        <div class="form-card__extras">
-          <a class="form-link" href="#" @click.prevent>忘记密码？</a>
-        </div>
-
         <el-button
           type="primary"
           class="submit-btn"
-          :loading="authStore.loading"
+          :loading="loading"
           native-type="submit"
         >
-          登 录
+          注 册
         </el-button>
       </el-form>
 
       <p class="form-card__footer">
-        没有账号？
-        <router-link class="form-link" :to="{ name: 'Register' }">立即注册</router-link>
+        已有账号？
+        <router-link class="form-link" :to="{ name: 'Login' }">去登录</router-link>
       </p>
     </div>
   </AuthLayout>
@@ -143,12 +160,6 @@ async function handleSubmit(): Promise<void> {
   color: #1e293b;
 }
 
-.form-card__extras {
-  display: flex;
-  justify-content: flex-end;
-  margin: -8px 0 24px;
-}
-
 .form-card__footer {
   text-align: center;
   margin-top: 28px;
@@ -175,6 +186,7 @@ async function handleSubmit(): Promise<void> {
   background: #2563eb;
   border: none;
   box-shadow: none;
+  margin-top: 8px;
   transition: background 0.3s ease;
 }
 

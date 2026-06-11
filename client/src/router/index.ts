@@ -27,6 +27,12 @@ const router = createRouter({
       meta: { requiresAuth: false },
     },
     {
+      path: '/register',
+      name: 'Register',
+      component: () => import('@/views/RegisterView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
       path: '/chat',
       name: 'Chat',
       component: () => import('@/views/ChatPage.vue'),
@@ -85,7 +91,7 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  if (to.name === 'Login' && isLoggedIn) {
+  if ((to.name === 'Login' || to.name === 'Register') && isLoggedIn) {
     next({ name: 'Chat' })
     return
   }
