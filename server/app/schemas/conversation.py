@@ -34,6 +34,10 @@ class MessageItem(BaseModel):
         default=None,
         description="引用来源元数据",
     )
+    user_feedback: Optional[str] = Field(
+        default=None,
+        description='当前用户对该消息的赞踩状态："positive" | "negative" | null',
+    )
     created_at: datetime = Field(..., description="创建时间")
 
 

@@ -38,3 +38,8 @@ class Message(Base):
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
 
     conversation = relationship("Conversation", back_populates="messages")
+    feedbacks = relationship(
+        "Feedback",
+        back_populates="message",
+        cascade="all, delete-orphan",
+    )

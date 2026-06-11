@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.database import engine, Base
+from app.core.migrations import run_schema_patches
 from app.api import auth, admin, documents, chat, feedback, conversations
 from app.services.search_service import get_bm25_index
 
@@ -31,6 +32,9 @@ import app.models.feedback  # noqa: F401
 # 启动时自动创建 storage 与 chroma_data 目录
 settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 settings.CHROMA_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# 补齐已有表的缺失列（如 documents.status），再 create_all 新表
+run_schema_patches(engine)
 
 # 在应用启动时自动创建所有数据库表
 Base.metadata.create_all(bind=engine)

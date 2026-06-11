@@ -200,6 +200,58 @@ def delete_document(db: Session, document: Document) -> Dict[str, Any]:
     }
 
 
+def delete_document_background(doc_id: int) -> None:
+    """
+    后台级联删除入口（供 Admin 异步删除调用）
+    使用独立 DB Session，执行完整删除链并记录日志
+    """
+    db = SessionLocal()
+    try:
+        logger.info("[AdminDelete] 后台任务启动 | doc_id=%s", doc_id)
+        document = db.query(Document).filter(Document.id == doc_id).first()
+        if not document:
+            logger.warning("[AdminDelete] 文档不存在，跳过 | doc_id=%s", doc_id)
+            return
+
+        if document.status != "deleting":
+            logger.warning(
+                "[AdminDelete] 文档状态非 deleting，跳过 | doc_id=%s status=%s",
+                doc_id,
+                document.status,
+            )
+            return
+
+        result = delete_document(db, document)
+        logger.info(
+            "[AdminDelete] 后台删除完成 | doc_id=%s result=%s",
+            doc_id,
+            result,
+        )
+    except ChromaDeleteError as exc:
+        db.rollback()
+        logger.exception(
+            "[AdminDelete] ChromaDB 删除失败，文档保持 deleting 状态 | doc_id=%s error=%s",
+            doc_id,
+            exc,
+        )
+    except DatabaseDeleteError as exc:
+        db.rollback()
+        logger.exception(
+            "[AdminDelete] MySQL 删除失败 | doc_id=%s error=%s",
+            doc_id,
+            exc,
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.exception(
+            "[AdminDelete] 未知错误 | doc_id=%s error=%s",
+            doc_id,
+            exc,
+        )
+    finally:
+        db.close()
+
+
 def get_chroma_collection():
     """
     获取或创建 ChromaDB 持久化集合
@@ -487,6 +539,8 @@ def process_document_background(doc_id: int, file_path: str, file_name: str) -> 
         # 文档入库后刷新 BM25 内存索引
         from app.services.search_service import get_bm25_index
 
+        document.status = "active"
+        db.commit()
         get_bm25_index().refresh_index()
 
         logger.info(

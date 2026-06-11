@@ -24,6 +24,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!token.value)
 
+  /** 是否为管理员角色 */
+  const isAdmin = computed(() => user.value?.role === 'admin')
+
   /** 持久化令牌 */
   function persistToken(accessToken: string): void {
     token.value = accessToken
@@ -89,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     loading,
     isLoggedIn,
+    isAdmin,
     login,
     register,
     logout,

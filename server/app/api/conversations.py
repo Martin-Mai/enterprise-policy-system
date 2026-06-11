@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.conversation import Conversation
+from app.models.feedback import Feedback
 from app.models.message import Message
 from app.models.user import User
 from app.schemas.conversation import (
@@ -84,16 +85,37 @@ def get_conversation_messages(
         .all()
     )
 
-    items = [
-        MessageItem(
-            id=msg.id,
-            role=msg.role,
-            content=msg.content,
-            citations=msg.citations,
-            created_at=msg.created_at,
+    # 批量查询当前用户对这些消息的赞踩记录，避免 N+1
+    message_ids = [msg.id for msg in messages]
+    feedback_map: dict[int, Feedback] = {}
+    if message_ids:
+        feedback_rows = (
+            db.query(Feedback)
+            .filter(
+                Feedback.user_id == current_user.id,
+                Feedback.message_id.in_(message_ids),
+            )
+            .all()
         )
-        for msg in messages
-    ]
+        feedback_map = {fb.message_id: fb for fb in feedback_rows}
+
+    items: list[MessageItem] = []
+    for msg in messages:
+        user_feedback: str | None = None
+        fb = feedback_map.get(msg.id)
+        if fb is not None:
+            user_feedback = "positive" if fb.is_positive else "negative"
+
+        items.append(
+            MessageItem(
+                id=msg.id,
+                role=msg.role,
+                content=msg.content,
+                citations=msg.citations,
+                user_feedback=user_feedback,
+                created_at=msg.created_at,
+            )
+        )
 
     return MessageListResponse(session_id=session_id, items=items)
 

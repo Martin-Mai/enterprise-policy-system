@@ -40,6 +40,15 @@ class Document(Base):
         comment="上传者用户 ID",
     )
 
+    # 文档生命周期状态：processing（处理中）/ active（正常）/ deleting（删除中）
+    status = Column(
+        String(20),
+        nullable=False,
+        default="active",
+        index=True,
+        comment="文档状态：processing / active / deleting",
+    )
+
     # 关联的分块记录，删除文档时级联删除所有分块
     chunks = relationship(
         "DocumentChunk",

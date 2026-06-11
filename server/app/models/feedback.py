@@ -67,5 +67,12 @@ class Feedback(Base):
         comment="反馈提交时间",
     )
 
-    message = relationship("Message", backref="feedbacks")
+    is_processed = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="管理员是否已处理该反馈",
+    )
+
+    message = relationship("Message", back_populates="feedbacks")
     user = relationship("User", backref="feedbacks")

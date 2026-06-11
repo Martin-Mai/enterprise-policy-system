@@ -6,7 +6,7 @@ import {
   fetchConversations,
   streamChat,
 } from '@/api/chat'
-import type { ChatMessage, ConversationItem } from '@/types/chat'
+import type { ChatMessage, ConversationItem, UserFeedback } from '@/types/chat'
 
 /** 生成临时消息 ID（流式输出期间使用） */
 let tempIdCounter = -1
@@ -187,11 +187,11 @@ export const useChatStore = defineStore('chat', () => {
     abortController?.abort()
   }
 
-  /** 更新消息的本地赞踩状态 */
-  function setMessageFeedback(messageId: number, isPositive: boolean): void {
+  /** 更新 Pinia 中指定消息的 user_feedback 状态（与后端字段对齐） */
+  function setMessageFeedback(messageId: number, feedback: UserFeedback): void {
     const msg = messages.value.find((m) => m.id === messageId)
     if (msg) {
-      msg.feedbackPositive = isPositive
+      msg.user_feedback = feedback
     }
   }
 

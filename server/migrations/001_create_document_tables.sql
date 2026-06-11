@@ -10,8 +10,10 @@ CREATE TABLE IF NOT EXISTS documents (
     file_path VARCHAR(500) NULL COMMENT '文件存储路径',
     upload_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
     uploaded_by INT NOT NULL COMMENT '上传者用户 ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'active' COMMENT '文档状态：processing / active / deleting',
     INDEX ix_documents_id (id),
     INDEX ix_documents_uploaded_by (uploaded_by),
+    INDEX idx_documents_status (status),
     CONSTRAINT fk_documents_uploaded_by
         FOREIGN KEY (uploaded_by) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文档表';

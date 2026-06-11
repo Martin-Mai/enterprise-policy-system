@@ -22,7 +22,13 @@ from app.services.chat_service import (
     persist_chat_messages,
     prepare_conversation_and_history,
 )
-from app.services.llm import OllamaError, stream_ollama_generate
+from app.services.llm import (
+    LatexStreamSanitizer,
+    OllamaError,
+    sanitize_latex_math,
+    stream_ollama_generate,
+    validate_numerical_compliance,
+)
 from app.services.search_service import hybrid_search
 
 logger = logging.getLogger(__name__)
@@ -86,6 +92,7 @@ async def chat_stream(
         disconnected: bool = False
         ollama_error: bool = False
         citations: List[Dict[str, Any]] = []
+        latex_sanitizer = LatexStreamSanitizer()
 
         try:
             async for token in stream_ollama_generate(prompt):
@@ -94,12 +101,57 @@ async def chat_stream(
                     logger.warning("[SSE Chat] 客户端断开 | session_id=%s", session_id)
                     break
 
-                full_answer += token
+                clean_token = latex_sanitizer.feed(token)
+                if clean_token:
+                    payload = json.dumps(
+                        {"type": "token", "content": clean_token},
+                        ensure_ascii=False,
+                    )
+                    yield f"data: {payload}\n\n"
+
+            flush_token = latex_sanitizer.flush()
+            if flush_token and not disconnected:
                 payload = json.dumps(
-                    {"type": "token", "content": token},
+                    {"type": "token", "content": flush_token},
                     ensure_ascii=False,
                 )
                 yield f"data: {payload}\n\n"
+
+            # 对完整原文做最终 LaTeX 净化，确保落库与合规校验使用纯文本版本
+            full_answer = sanitize_latex_math(latex_sanitizer.raw_text)
+
+            # 流式吐字结束后，Python 数值安全垫二次校验（不破坏 SSE 主流程）
+            if full_answer and not disconnected:
+                intercepted, append_suffix, replacement_message = validate_numerical_compliance(
+                    question,
+                    retrieved_chunks,
+                    full_answer,
+                )
+                if intercepted:
+                    if replacement_message:
+                        logger.warning(
+                            "[SSE Chat] 数值合规拦截（整段替换） | session_id=%s",
+                            session_id,
+                        )
+                        full_answer = replacement_message
+                        correction_payload = json.dumps(
+                            {"type": "token", "content": replacement_message},
+                            ensure_ascii=False,
+                        )
+                        yield f"data: {correction_payload}\n\n"
+                    elif append_suffix:
+                        # 未休状态下幻觉扣减类：在流末尾追加合规修正提示
+                        logger.warning(
+                            "[SSE Chat] 幻觉扣减合规拦截 | session_id=%s",
+                            session_id,
+                        )
+                        correction_line = f"\n\n{append_suffix}"
+                        full_answer = full_answer + correction_line
+                        correction_payload = json.dumps(
+                            {"type": "token", "content": correction_line},
+                            ensure_ascii=False,
+                        )
+                        yield f"data: {correction_payload}\n\n"
 
         except OllamaError as exc:
             ollama_error = True

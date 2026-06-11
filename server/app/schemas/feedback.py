@@ -21,6 +21,10 @@ class FeedbackSubmitResponse(BaseModel):
     """反馈提交成功响应"""
 
     message: str = Field(..., description="操作结果提示")
+    user_feedback: Optional[str] = Field(
+        default=None,
+        description='更新后的赞踩状态："positive" | "negative" | null（撤销后为 null）',
+    )
 
 
 class AdminAuditLogItem(BaseModel):
@@ -30,6 +34,7 @@ class AdminAuditLogItem(BaseModel):
     username: str = Field(..., description="提问用户用户名")
     question: str = Field(..., description="用户原始提问")
     answer_summary: str = Field(..., description="回答摘要（前 200 字符）")
+    citation_count: int = Field(default=0, description="引用文档数量")
     citations: Optional[List[Dict[str, Any]]] = Field(
         default=None,
         description="完整引用列表",
@@ -55,6 +60,7 @@ class AdminFeedbackItem(BaseModel):
     username: str = Field(..., description="提交反馈的用户名")
     is_positive: bool = Field(..., description="True=点赞，False=点踩")
     comment: Optional[str] = Field(default=None, description="用户评语")
+    is_processed: bool = Field(default=False, description="是否已被管理员处理")
     created_at: datetime = Field(..., description="反馈提交时间")
 
 

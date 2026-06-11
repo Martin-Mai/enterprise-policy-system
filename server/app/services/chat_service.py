@@ -14,6 +14,10 @@ from app.core.database import SessionLocal
 from app.models.audit_log import AuditLog
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.services.llm import (
+    NUMERICAL_COMPLIANCE_AUDIT_PROTOCOL,
+    PLAIN_TEXT_MATH_FORMAT_PROTOCOL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +138,11 @@ def build_rag_prompt(
         "【核心合规红线】：\n"
         '1. 如果参考资料不足、不相关或无法推导出答案，请明确且仅说明："未找到相关信息"。'
         "绝对禁止凭借自身知识编造、胡扯或幻觉任何公司制度。\n"
-        "2. 回答时，必须在提及相关知识点的句尾，强制附上对应的参考资料引用编号（例如：...报销上限为500元[1]）。\n\n"
+        "2. 回答时，必须在提及相关知识点的句尾，强制附上对应的参考资料引用编号（例如：...报销上限为500元[1]）。\n"
+        "3. 当用户明确表示「未休/未使用/从未消耗」时，必须输出制度规定的【全额总额度】，"
+        "严禁凭空假设已消耗量并做减法（如 10-5=5）。\n\n"
+        f"{PLAIN_TEXT_MATH_FORMAT_PROTOCOL}\n\n"
+        f"{NUMERICAL_COMPLIANCE_AUDIT_PROTOCOL}\n\n"
         f"【参考资料】：\n{refs_text}\n\n"
         f"【对话历史】：\n{history_section}\n\n"
         f"用户问题：{question}\n"

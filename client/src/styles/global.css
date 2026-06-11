@@ -1,12 +1,36 @@
 :root {
-  --eps-primary: #1a56db;
-  --eps-primary-dark: #0f3d9e;
-  --eps-bg: #f0f4f8;
+  /* 核心色板 */
+  --eps-primary: #2563eb;
+  --eps-primary-dark: #1d4ed8;
+  --eps-success: #10b981;
+  --eps-danger: #ef4444;
+  --eps-warning: #f59e0b;
+
+  /* 中性色 */
+  --eps-bg: #f8fafc;
+  --eps-card-bg: #ffffff;
   --eps-sidebar-bg: #ffffff;
-  --eps-user-bubble: linear-gradient(135deg, #1a56db 0%, #0e7490 100%);
-  --eps-assistant-bubble: #ffffff;
   --eps-border: #e2e8f0;
+  --eps-text-primary: #1e293b;
   --eps-text-muted: #64748b;
+  --eps-table-header: #f1f5f9;
+  --eps-table-stripe: #f9fafb;
+  --eps-table-hover: #f8fafc;
+
+  /* 聊天气泡（前台保留） */
+  --eps-user-bubble: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --eps-assistant-bubble: #ffffff;
+
+  /* Element Plus 主题覆盖 */
+  --el-color-primary: var(--eps-primary);
+  --el-color-success: var(--eps-success);
+  --el-color-danger: var(--eps-danger);
+  --el-color-warning: var(--eps-warning);
+  --el-border-radius-base: 12px;
+
+  /* 企业级卡片阴影 */
+  --eps-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  --eps-card-shadow-float: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -22,7 +46,81 @@ body,
   height: 100%;
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background: var(--eps-bg);
-  color: #1e293b;
+  color: var(--eps-text-primary);
+}
+
+/* ── 卡片（el-card）全局规范 ── */
+.el-card {
+  background: var(--eps-card-bg) !important;
+  border: 1px solid var(--eps-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--eps-card-shadow) !important;
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--eps-border);
+  color: var(--eps-text-primary);
+  font-weight: 600;
+}
+
+/* ── 表格（el-table）全局规范 ── */
+.el-table {
+  --el-table-header-bg-color: var(--eps-table-header);
+  --el-table-header-text-color: var(--eps-text-primary);
+  --el-table-row-hover-bg-color: var(--eps-table-hover);
+  --el-table-border-color: var(--eps-border);
+  border-radius: 8px;
+}
+
+.el-table th.el-table__cell {
+  background-color: var(--eps-table-header) !important;
+  color: var(--eps-text-primary) !important;
+  font-weight: 600;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: var(--eps-table-stripe);
+}
+
+.el-table__body tr:hover > td.el-table__cell {
+  background-color: var(--eps-table-hover) !important;
+}
+
+/* ── 上传拖拽区对齐整页风格 ── */
+.el-upload-dragger {
+  border: 1px dashed var(--eps-border) !important;
+  border-radius: 8px !important;
+  background: var(--eps-bg) !important;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.el-upload-dragger:hover {
+  border-color: var(--eps-primary) !important;
+  background: #eff6ff !important;
+}
+
+/* ── 进度条精细化 ── */
+.el-progress-bar__outer {
+  border-radius: 4px;
+  background: #f1f5f9;
+}
+
+.el-progress-bar__inner {
+  border-radius: 4px;
+}
+
+/* ── 抽屉标题 ── */
+.el-drawer__header {
+  margin-bottom: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--eps-border);
+  color: var(--eps-text-primary);
+  font-weight: 600;
+}
+
+/* ── 分页器 ── */
+.el-pagination.is-background .el-pager li.is-active {
+  background-color: var(--eps-primary) !important;
 }
 
 /* Markdown 代码高亮基础样式 */
@@ -37,8 +135,8 @@ body,
 }
 
 .markdown-body {
-  font-size: 15px;
-  line-height: 1.75;
+  font-size: 16px;
+  line-height: 1.7;
   word-break: break-word;
 }
 
@@ -72,12 +170,53 @@ body,
 .markdown-body h2,
 .markdown-body h3 {
   margin: 0.75em 0 0.5em;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.5;
 }
+
+.markdown-body h1 { font-size: 1.35em; }
+.markdown-body h2 { font-size: 1.2em; }
+.markdown-body h3 { font-size: 1.1em; }
 
 .markdown-body blockquote {
   border-left: 4px solid var(--eps-primary);
   padding-left: 12px;
   color: var(--eps-text-muted);
   margin: 0.5em 0;
+}
+
+/* 管理后台通用卡片容器 */
+.admin-card {
+  background: var(--eps-card-bg);
+  border: 1px solid var(--eps-border);
+  border-radius: 12px;
+  box-shadow: var(--eps-card-shadow);
+  padding: 20px 24px;
+}
+
+/* 前台 ↔ 后台导航链接按钮（视觉对齐） */
+.eps-nav-link-btn.el-button.is-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--eps-primary);
+  padding: 4px 8px;
+}
+
+.eps-nav-link-btn.el-button.is-link:hover {
+  color: var(--eps-primary-dark);
+}
+
+/* 极客风 JSON 代码块（审计抽屉复用） */
+.json-console {
+  padding: 16px;
+  background: #0f172a;
+  color: #f1f5f9;
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 75vh;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-all;
 }

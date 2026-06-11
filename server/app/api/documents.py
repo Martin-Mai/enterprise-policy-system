@@ -103,6 +103,7 @@ async def upload_document(
         file_name=file.filename,
         file_path=str(stored_path),
         uploaded_by=current_user.id,
+        status="processing",
     )
     db.add(document)
     db.commit()

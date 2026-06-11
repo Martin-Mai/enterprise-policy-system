@@ -20,7 +20,7 @@ function openPreview(citation: Citation): void {
 
 <template>
   <div v-if="citations.length > 0" class="citation-list">
-    <el-collapse>
+    <el-collapse class="citation-collapse">
       <el-collapse-item title="参考来源" name="citations">
         <div class="citation-grid">
           <div
@@ -44,11 +44,13 @@ function openPreview(citation: Citation): void {
       </el-collapse-item>
     </el-collapse>
 
+    <!-- 源码查阅弹窗：等宽字体 + 舒适行高 -->
     <el-dialog
       v-model="dialogVisible"
       :title="selectedCitation?.file_name ?? '引用详情'"
-      width="640px"
+      width="680px"
       destroy-on-close
+      class="citation-dialog"
     >
       <template v-if="selectedCitation">
         <div class="dialog-meta">
@@ -67,39 +69,54 @@ function openPreview(citation: Citation): void {
 
 <style scoped>
 .citation-list {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
+/* 折叠面板标题字号放大 */
+.citation-collapse :deep(.el-collapse-item__header) {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.6;
+  border-bottom-color: #e2e8f0;
+}
+
+.citation-collapse :deep(.el-collapse-item__content) {
+  padding-bottom: 4px;
+}
+
+/* 网格布局排开引用卡片 */
 .citation-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
-  padding: 4px 0;
+  padding: 8px 0 4px;
 }
 
 .citation-card {
-  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 1px solid var(--eps-border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .citation-card:hover {
-  border-color: var(--eps-primary);
-  box-shadow: 0 4px 12px rgba(26, 86, 219, 0.12);
-  transform: translateY(-2px);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
 }
 
 .citation-card__header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--eps-primary);
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #3b82f6;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .citation-card__filename {
@@ -110,15 +127,16 @@ function openPreview(citation: Citation): void {
 }
 
 .citation-card__meta {
-  font-size: 12px;
-  color: var(--eps-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  color: #64748b;
   margin-bottom: 8px;
 }
 
 .citation-card__preview {
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.7;
   color: #475569;
-  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -131,15 +149,19 @@ function openPreview(citation: Citation): void {
   margin-bottom: 16px;
 }
 
+/* 弹窗源码区：等宽字体 14px，行高 1.6 */
 .dialog-content {
   background: #f8fafc;
-  border-radius: 8px;
-  padding: 16px;
-  line-height: 1.75;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 14px;
+  line-height: 1.6;
   color: #334155;
-  max-height: 400px;
+  max-height: 420px;
   overflow-y: auto;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

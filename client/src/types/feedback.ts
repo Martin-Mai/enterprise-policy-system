@@ -8,4 +8,6 @@ export interface FeedbackPayload {
 /** 反馈提交响应 */
 export interface FeedbackResponse {
   message: string
+  /** 更新后的赞踩状态，撤销后为 null */
+  user_feedback?: 'positive' | 'negative' | null
 }

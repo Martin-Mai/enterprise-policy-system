@@ -13,7 +13,7 @@ from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.models.document import DocumentChunk
+from app.models.document import Document, DocumentChunk
 from app.services.document_processor import get_chroma_collection, get_embedding
 
 logger = logging.getLogger(__name__)
@@ -122,10 +122,16 @@ class BM25Index:
         self.refresh_index()
 
     def refresh_index(self) -> None:
-        """无缝热更新索引"""
+        """无缝热更新索引（自动排除 deleting 状态文档的分块）"""
         db: Session = SessionLocal()
         try:
-            chunks = db.query(DocumentChunk).order_by(DocumentChunk.id.asc()).all()
+            chunks = (
+                db.query(DocumentChunk)
+                .join(Document, DocumentChunk.doc_id == Document.id)
+                .filter(Document.status == "active")
+                .order_by(DocumentChunk.id.asc())
+                .all()
+            )
             if not chunks:
                 logger.info("[BM25Index] MySQL 为空，跳过索引构建")
                 return
@@ -225,7 +231,7 @@ def get_bm25_index() -> BM25Index:
     return BM25Index()
 
 async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
-    """ChromaDB 语义召回"""
+    """ChromaDB 语义召回（过滤 deleting 状态文档）"""
     try:
         query = clean_text(query)
         query_embedding = await get_embedding(query)
@@ -236,18 +242,29 @@ async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
         if collection.count() == 0:
             return []
 
+        # 获取 deleting 状态文档 ID，用于过滤幽灵检索
+        deleting_doc_ids: set[int] = set()
+        db: Session = SessionLocal()
+        try:
+            rows = (
+                db.query(Document.id)
+                .filter(Document.status == "deleting")
+                .all()
+            )
+            deleting_doc_ids = {row[0] for row in rows}
+        finally:
+            db.close()
+
         # 扩大检索深度，给后续的硬阈值过滤留足缓冲空间
         search_limit = max(limit * 3, 30)
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=search_limit,
-            # include=["documents", "metadatas", "distances", "ids"],
-            include=["documents", "metadatas"]  # 删掉 "ids"
+            include=["documents", "metadatas"]
         )
 
         search_items: List[Dict[str, Any]] = []
 
-        # ✅ 新增：空值防护，防止results为None时报错    
         if not results:
             return []
 
@@ -260,16 +277,19 @@ async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
             if len(search_items) >= limit:
                 break
 
+            meta = metadata or {}
+            doc_id = meta.get("doc_id")
+            if doc_id is not None and int(doc_id) in deleting_doc_ids:
+                continue
+
             doc_text = clean_text(doc_text)
             dist_val = float(distance)
-            
-            # 自适应距离转相似度得分
+
             score = round(1.0 - dist_val if dist_val <= 1.0 else max(0.0, 1.0 - (dist_val / 2)), 4)
 
             if score < MIN_VECTOR_SCORE:
                 continue
 
-            meta = metadata or {}
             # 统一解析 chunk_id
             real_chunk_id = _resolve_mysql_chunk_id(str(chunk_id), meta)
 

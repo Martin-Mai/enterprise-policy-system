@@ -122,12 +122,15 @@ async function handleDelete(sessionId: string, event: Event): Promise<void> {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px;
-  border-radius: 10px;
+  padding: 14px 14px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   position: relative;
+  border: 1px solid transparent;
+  background: #ffffff;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
 }
 
 .session-card:hover {
@@ -151,16 +154,18 @@ async function handleDelete(sessionId: string, event: Event): Promise<void> {
 }
 
 .session-card__title {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   color: #1e293b;
+  line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .session-card__time {
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--eps-text-muted);
 }
 
@@ -192,7 +197,8 @@ async function handleDelete(sessionId: string, event: Event): Promise<void> {
 .empty-hint {
   text-align: center;
   color: var(--eps-text-muted);
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.6;
   padding: 32px 16px;
 }
 </style>

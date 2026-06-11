@@ -61,6 +61,8 @@ def submit_feedback(
             .first()
         )
 
+        user_feedback = "positive" if body.is_positive else "negative"
+
         if existing is not None:
             existing.is_positive = body.is_positive
             existing.comment = body.comment
@@ -87,7 +89,10 @@ def submit_feedback(
                 body.is_positive,
             )
 
-        return FeedbackSubmitResponse(message="反馈提交成功")
+        return FeedbackSubmitResponse(
+            message="反馈提交成功",
+            user_feedback=user_feedback,
+        )
 
     except SQLAlchemyError as exc:
         db.rollback()
@@ -100,4 +105,70 @@ def submit_feedback(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="反馈提交失败，请稍后重试",
+        ) from exc
+
+
+@router.delete("/{message_id}", response_model=FeedbackSubmitResponse)
+def revoke_feedback(
+    message_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FeedbackSubmitResponse:
+    """
+    撤销用户对指定 AI 消息的赞踩反馈。
+
+    若不存在反馈记录则幂等返回成功。
+    """
+    owned_message = (
+        db.query(Message)
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .filter(
+            Message.id == message_id,
+            Conversation.user_id == current_user.id,
+            Message.role == "assistant",
+        )
+        .first()
+    )
+
+    if owned_message is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="无权撤销该消息的反馈",
+        )
+
+    try:
+        existing = (
+            db.query(Feedback)
+            .filter(
+                Feedback.user_id == current_user.id,
+                Feedback.message_id == message_id,
+            )
+            .first()
+        )
+
+        if existing is not None:
+            db.delete(existing)
+            db.commit()
+            logger.info(
+                "[Feedback] 反馈已撤销 | user_id=%s | message_id=%s",
+                current_user.id,
+                message_id,
+            )
+
+        return FeedbackSubmitResponse(
+            message="反馈已撤销",
+            user_feedback=None,
+        )
+
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception(
+            "[Feedback] 反馈撤销失败 | user_id=%s | message_id=%s | error=%s",
+            current_user.id,
+            message_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="反馈撤销失败，请稍后重试",
         ) from exc

@@ -8,6 +8,9 @@ export interface Citation {
   inferred?: boolean
 }
 
+/** 用户对 AI 消息的赞踩状态 */
+export type UserFeedback = 'positive' | 'negative' | null
+
 /** 聊天消息（前端展示模型） */
 export interface ChatMessage {
   /** 数据库消息 ID，流式生成中可能为临时负数 */
@@ -22,8 +25,8 @@ export interface ChatMessage {
   aborted?: boolean
   /** 是否发生错误 */
   error?: boolean
-  /** 本地赞踩状态：true=赞，false=踩，undefined=未操作 */
-  feedbackPositive?: boolean
+  /** 当前用户对该消息的赞踩状态，与后端 user_feedback 字段对齐 */
+  user_feedback?: UserFeedback
 }
 
 /** 会话列表项 */
