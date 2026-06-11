@@ -118,6 +118,7 @@ async def chat_stream(
                 )
 
             persist_success: bool = False
+            assistant_message_id: int | None = None
             if question:
                 citations = (
                     parse_citations(answer_to_save, retrieved_chunks)
@@ -125,14 +126,14 @@ async def chat_stream(
                     else []
                 )
                 try:
-                    await run_in_threadpool(
+                    assistant_message_id = await run_in_threadpool(
                         persist_chat_messages,
                         conversation_id,
                         question,
                         answer_to_save,
                         citations,
                     )
-                    persist_success = True
+                    persist_success = assistant_message_id is not None
                 except Exception as exc:
                     logger.exception(
                         "[SSE Chat] 落库失败 | session_id=%s | error=%s",
@@ -154,7 +155,12 @@ async def chat_stream(
             if not disconnected and not ollama_error and answer_to_save:
                 end_citations = [Citation(**item).model_dump(exclude_none=True) for item in _citations_for_sse(citations)]
                 end_payload = json.dumps(
-                    {"type": "end", "citations": end_citations},
+                    {
+                        "type": "end",
+                        "citations": end_citations,
+                        "message_id": assistant_message_id,
+                        "session_id": session_id,
+                    },
                     ensure_ascii=False,
                 )
                 yield f"data: {end_payload}\n\n"

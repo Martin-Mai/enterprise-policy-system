@@ -5,12 +5,13 @@ FastAPI 应用入口文件
 import logging
 import traceback
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import auth, admin, documents, chat, feedback
+from app.api import auth, admin, documents, chat, feedback, conversations
 from app.services.search_service import get_bm25_index
 
 # 配置基础日志，便于后台文档处理任务输出调试信息
@@ -41,6 +42,15 @@ app = FastAPI(
     version="1.1.0",
 )
 
+# 允许前端开发服务器跨域访问（含 SSE fetch 流式请求）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     traceback.print_exc()
@@ -54,6 +64,7 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
+app.include_router(conversations.router)
 app.include_router(feedback.router)
 
 

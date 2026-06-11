@@ -190,12 +190,15 @@ def persist_chat_messages(
     question: str,
     answer: str,
     citations: List[Dict[str, Any]],
-) -> None:
+) -> Optional[int]:
     """
     原子持久化一轮问答（user + assistant 两条消息），同步供线程池调用。
+
+    Returns:
+        助手消息的数据库 ID；无内容可落库时返回 None。
     """
     if not question and not answer:
-        return
+        return None
 
     db: Session = SessionLocal()
     try:
@@ -214,11 +217,14 @@ def persist_chat_messages(
         db.add(user_message)
         db.add(assistant_message)
         db.commit()
+        db.refresh(assistant_message)
         logger.info(
-            "[SSE Chat] 消息落库成功 | conversation_id=%s | citations=%d",
+            "[SSE Chat] 消息落库成功 | conversation_id=%s | assistant_message_id=%s | citations=%d",
             conversation_id,
+            assistant_message.id,
             len(citations),
         )
+        return assistant_message.id
     except Exception as exc:
         db.rollback()
         logger.exception(
