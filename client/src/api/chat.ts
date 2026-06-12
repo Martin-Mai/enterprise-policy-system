@@ -1,4 +1,4 @@
-import apiClient, { TOKEN_STORAGE_KEY } from './client'
+import apiClient, { resolveApiBaseURL, TOKEN_STORAGE_KEY } from './client'
 import type {
   ChatMessage,
   ChatStreamRequest,
@@ -58,7 +58,7 @@ export async function streamChat(
 ): Promise<void> {
   const token = localStorage.getItem(TOKEN_STORAGE_KEY)
 
-  const response = await fetch('http://localhost:8000/api/chat/stream', {
+  const response = await fetch(`${resolveApiBaseURL()}/api/chat/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

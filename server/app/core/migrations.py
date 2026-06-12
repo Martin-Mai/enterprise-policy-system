@@ -8,6 +8,8 @@ import logging
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from app.core.database import Base
+
 logger = logging.getLogger(__name__)
 
 
@@ -109,6 +111,7 @@ def run_schema_patches(engine: Engine) -> None:
     补齐 documents.status 与 feedbacks.is_processed 列
     兼容已有 MySQL 实例，可重复调用（列已存在则跳过）
     """
+    Base.metadata.create_all(engine)
     with engine.begin() as conn:
         if not _column_exists(engine, "documents", "status"):
             logger.info("[Migration] 为 documents 表添加 status 列")

@@ -1,0 +1,5 @@
+# 告诉 Docker 构建镜像时忽略这些目录/文件，加快构建、减小镜像体积
+node_modules
+.venv
+__pycache__
+.git

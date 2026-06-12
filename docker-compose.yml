@@ -1,0 +1,78 @@
+# 这个文件是一键启动整套服务的“总指挥”：MySQL + 后端 + 前端
+# 使用方法（在项目根目录打开 PowerShell）：
+#   docker compose up -d --build
+# 停止并删除容器：
+#   docker compose down
+
+services:
+  # ---------- MySQL 数据库 ----------
+  mysql:
+    image: mysql:8.0
+    container_name: eps-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: enterprise_kb
+    volumes:
+      # 把数据库文件持久化到 Docker 卷，删容器不会丢数据
+      - mysql_data:/var/lib/mysql
+    ports:
+      # 可选：暴露到宿主机 3306，方便用 Navicat 等工具连接调试
+      - "3307:3306"
+    healthcheck:
+      # 等 MySQL 真正就绪后再让 backend 启动，避免连库失败
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---------- FastAPI 后端 ----------
+  backend:
+    build:
+      # 构建上下文为项目根目录，以便使用根目录 .dockerignore
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: eps-backend
+    restart: unless-stopped
+    environment:
+      # 确保 JWT 密钥从 .env 注入（SECRET_KEY 与 JWT_SECRET 保持一致）
+      SECRET_KEY: ${JWT_SECRET}
+      DATABASE_URL: mysql+pymysql://root:${MYSQL_PASSWORD}@mysql:3306/enterprise_kb
+      # Ollama 运行在 Windows 宿主机，地址固定为 host.docker.internal（勿改成 localhost）
+      OLLAMA_EMBEDDING_URL: http://host.docker.internal:11434/api/embeddings
+      OLLAMA_GENERATE_URL: http://host.docker.internal:11434/api/generate
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-qwen2.5:7b}
+      OLLAMA_GENERATE_TIMEOUT: ${OLLAMA_GENERATE_TIMEOUT:-300}
+    extra_hosts:
+      # 让容器内能解析 host.docker.internal，从而访问 Windows 宿主机上的 Ollama
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # ChromaDB 向量数据持久化到宿主机 ./chroma_data 目录
+      - ./chroma_data:${CHROMA_PERSIST_DIRECTORY:-/app/chroma_data}
+      # 上传的文档文件持久化
+      - ./server/storage:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  # ---------- Vue 前端（Nginx 托管） ----------
+  frontend:
+    build:
+      # 构建上下文为项目根目录，以便同时读取 client/ 源码和 frontend/nginx.conf
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: eps-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      # 浏览器访问 http://localhost:8080 即可打开前端页面
+      - "8080:80"
+
+# 命名卷：MySQL 数据
+volumes:
+  mysql_data:
