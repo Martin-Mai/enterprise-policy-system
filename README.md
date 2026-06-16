@@ -24,29 +24,29 @@
 
 ## 功能预览
 
-### 1. Login
+### 1. 登录
 
-![Login](product-display-img/Login.jpg)
+![登录](product-display-img/Login.jpg)
 
-### 2. Chatting
+### 2. 聊天
 
-![Chatting](product-display-img/Chatting.jpg)
+![聊天](product-display-img/Chatting.jpg)
 
-### 3. Dashboard
+### 3. 仪表盘
 
-![Dashboard](product-display-img/Dashboard.jpg)
+![仪表盘](product-display-img/Dashboard.jpg)
 
-### 4. Document Management
+### 4. 文档管理
 
-![Document Management](product-display-img/Document-Management.jpg)
+![文档管理](product-display-img/Document-Management.jpg)
 
-### 5. Audit Logs
+### 5. 审计日志
 
-![Audit Logs](product-display-img/Audit-Logs.jpg)
+![审计日志](product-display-img/Audit-Logs.jpg)
 
-### 6. Feedback Centre
+### 6. 反馈中心
 
-![Feedback Centre](product-display-img/Feedback-Centre.jpg)
+![反馈中心](product-display-img/Feedback-Centre.jpg)
 
 ## 架构亮点
 
