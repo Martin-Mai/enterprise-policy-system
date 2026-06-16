@@ -22,6 +22,32 @@
 - **权限与管理后台**：JWT 认证 + RBAC（`admin` / `user`）；文档管理、审计日志查询、运营仪表盘、用户反馈处理。
 - **容器化部署**：Docker Compose 一键编排 MySQL、后端与前端；Ollama 运行于宿主机，容器经 `host.docker.internal` 调用。
 
+## 功能预览
+
+### 1. Login
+
+![Login](product-display-img/Login.jpg)
+
+### 2. Chatting
+
+![Chatting](product-display-img/Chatting.jpg)
+
+### 3. Dashboard
+
+![Dashboard](product-display-img/Dashboard.jpg)
+
+### 4. Document Management
+
+![Document Management](product-display-img/Document-Management.jpg)
+
+### 5. Audit Logs
+
+![Audit Logs](product-display-img/Audit-Logs.jpg)
+
+### 6. Feedback Centre
+
+![Feedback Centre](product-display-img/Feedback-Centre.jpg)
+
 ## 架构亮点
 
 ```
@@ -235,6 +261,32 @@ A localized RAG Q&A system for internal HR and administrative policy documents. 
 - **Compliance & audit**: Numerical hallucination guardrails; full-chain audit logs persisted (retrieval, generation, citation parsing, and other critical steps are traceable).
 - **RBAC & admin console**: JWT auth with `admin` / `user` roles; document management, audit log viewer, operations dashboard, and user feedback handling.
 - **Containerized deployment**: One-command Docker Compose for MySQL, backend, and frontend; Ollama runs on the host and is reached via `host.docker.internal`.
+
+## Feature Preview
+
+### 1. Login
+
+![Login](product-display-img/Login.jpg)
+
+### 2. Chatting
+
+![Chatting](product-display-img/Chatting.jpg)
+
+### 3. Dashboard
+
+![Dashboard](product-display-img/Dashboard.jpg)
+
+### 4. Document Management
+
+![Document Management](product-display-img/Document-Management.jpg)
+
+### 5. Audit Logs
+
+![Audit Logs](product-display-img/Audit-Logs.jpg)
+
+### 6. Feedback Centre
+
+![Feedback Centre](product-display-img/Feedback-Centre.jpg)
 
 ## Architecture Highlights
 
