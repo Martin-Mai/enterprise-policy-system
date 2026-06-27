@@ -44,7 +44,10 @@ services:
       OLLAMA_GENERATE_URL: http://host.docker.internal:11434/api/generate
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-qwen2.5:7b}
+      OLLAMA_EMBEDDING_TIMEOUT: ${OLLAMA_EMBEDDING_TIMEOUT:-180}
       OLLAMA_GENERATE_TIMEOUT: ${OLLAMA_GENERATE_TIMEOUT:-300}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      OLLAMA_WARMUP_ENABLED: ${OLLAMA_WARMUP_ENABLED:-true}
     extra_hosts:
       # 让容器内能解析 host.docker.internal，从而访问 Windows 宿主机上的 Ollama
       - "host.docker.internal:host-gateway"
