@@ -230,6 +230,16 @@ class BM25Index:
 def get_bm25_index() -> BM25Index:
     return BM25Index()
 
+
+def _chroma_query_rows(results: Dict[str, Any], field: str) -> List[Any]:
+    """从 Chroma query 结果中安全取出单 query 对应的结果行（Chroma 可能返回 null）"""
+    value = results.get(field)
+    if not value or not isinstance(value, (list, tuple)):
+        return []
+    first = value[0]
+    return list(first) if first is not None else []
+
+
 async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
     """ChromaDB 语义召回（过滤 deleting 状态文档）"""
     try:
@@ -260,7 +270,7 @@ async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=search_limit,
-            include=["documents", "metadatas"]
+            include=["documents", "metadatas", "distances"],
         )
 
         search_items: List[Dict[str, Any]] = []
@@ -268,10 +278,18 @@ async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
         if not results:
             return []
 
-        documents = results.get("documents", [[]])[0]
-        metadatas = results.get("metadatas", [[]])[0]
-        distances = results.get("distances", [[]])[0]
-        ids = results.get("ids", [[]])[0]
+        ids = _chroma_query_rows(results, "ids")
+        documents = _chroma_query_rows(results, "documents")
+        metadatas = _chroma_query_rows(results, "metadatas")
+        distances = _chroma_query_rows(results, "distances")
+
+        if not ids or not documents:
+            return []
+
+        if len(distances) < len(ids):
+            distances = list(distances) + [1.0] * (len(ids) - len(distances))
+        if len(metadatas) < len(ids):
+            metadatas = list(metadatas) + [{}] * (len(ids) - len(metadatas))
 
         for chunk_id, doc_text, metadata, distance in zip(ids, documents, metadatas, distances):
             if len(search_items) >= limit:

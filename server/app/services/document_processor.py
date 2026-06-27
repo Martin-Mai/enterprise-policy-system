@@ -411,10 +411,11 @@ async def get_embedding(text: str) -> Optional[List[float]]:
     payload = {
         "model": settings.OLLAMA_EMBEDDING_MODEL,
         "prompt": text,
+        "keep_alive": settings.OLLAMA_KEEP_ALIVE,
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=settings.OLLAMA_EMBEDDING_TIMEOUT) as client:
             response = await client.post(settings.OLLAMA_EMBEDDING_URL, json=payload)
             response.raise_for_status()
             data = response.json()

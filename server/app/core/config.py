@@ -59,7 +59,20 @@ class Settings:
     OLLAMA_CHAT_MODEL: str = os.getenv("OLLAMA_CHAT_MODEL", "qwen2.5:7b")
 
     # Ollama 流式生成超时（秒）
-    OLLAMA_GENERATE_TIMEOUT: float = float(os.getenv("OLLAMA_GENERATE_TIMEOUT", "120"))
+    OLLAMA_GENERATE_TIMEOUT: float = float(os.getenv("OLLAMA_GENERATE_TIMEOUT", "300"))
+
+    # Ollama 向量化请求超时（秒）
+    OLLAMA_EMBEDDING_TIMEOUT: float = float(os.getenv("OLLAMA_EMBEDDING_TIMEOUT", "180"))
+
+    # Ollama 模型内存驻留时长（如 30m、-1 表示永久）
+    OLLAMA_KEEP_ALIVE: str = os.getenv("OLLAMA_KEEP_ALIVE", "30m")
+
+    # 是否在应用启动后后台预热 Ollama 模型
+    OLLAMA_WARMUP_ENABLED: bool = os.getenv("OLLAMA_WARMUP_ENABLED", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     # 文档上传大小限制（字节），默认 10MB
     MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))

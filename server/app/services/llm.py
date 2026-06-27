@@ -1100,6 +1100,7 @@ async def stream_ollama_generate(prompt: str) -> AsyncIterator[str]:
         "model": settings.OLLAMA_CHAT_MODEL,
         "prompt": prompt,
         "stream": True,
+        "keep_alive": settings.OLLAMA_KEEP_ALIVE,
     }
 
     try:
