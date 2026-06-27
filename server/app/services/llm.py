@@ -947,6 +947,12 @@ def validate_unit_conversion(
     return False, ""
 
 
+def _correction_baseline_for(reduced_day: float, baselines: List[float]) -> float:
+    """取大于 reduced_day 的最小资料档位；若无更高档位则回退为 max(baselines)。"""
+    higher = [baseline for baseline in baselines if baseline > reduced_day]
+    return min(higher) if higher else max(baselines)
+
+
 def validate_unauthorized_deduction(
     query: str,
     retrieved_chunks: List[Dict[str, Any]],
@@ -959,7 +965,9 @@ def validate_unauthorized_deduction(
     1. 用户提问命中零消费关键词；
     2. 资料中存在可识别的天数额度基准；
     3. 资料中无扣减依据；
-    4. 模型回答中的结论性天数 < 资料基准天数。
+    4. 模型结论性天数不在资料档位集合中，且低于其应对应的最近档位。
+
+    分档制度（如 5/10/15 天）下，模型按用户条件给出某一档位的正确天数时不拦截。
 
     Returns:
         (should_intercept, correction_suffix)
@@ -981,18 +989,26 @@ def validate_unauthorized_deduction(
     if _chunks_contain_deduction_evidence(chunk_text):
         return False, ""
 
-    baseline_days = max(baselines)
+    baseline_set = set(baselines)
     answer_days = extract_answer_conclusion_days(llm_answer)
     if not answer_days:
         return False, ""
 
-    # 任一结论性天数低于基准且不为 0（0 通常表示「已休 0 天」，非最终额度）
-    reduced_days = [
-        day for day in answer_days
-        if 0 < day < baseline_days
-    ]
-    if not reduced_days:
+    violations: List[Tuple[float, float]] = []
+    for day in answer_days:
+        if day <= 0:
+            continue
+        # 结论天数命中资料某一档位 → 视为分档正确，非幻觉扣减
+        if day in baseline_set:
+            continue
+        correction_baseline = _correction_baseline_for(day, baselines)
+        if day < correction_baseline:
+            violations.append((day, correction_baseline))
+
+    if not violations:
         return False, ""
+
+    _, baseline_days = max(violations, key=lambda item: item[1] - item[0])
 
     quota_label = _infer_quota_label(query, chunk_text)
     status_hint = _infer_status_hint(query)
@@ -1003,10 +1019,11 @@ def validate_unauthorized_deduction(
     )
 
     logger.warning(
-        "[NumericalCompliance] 触发幻觉扣减拦截 | baseline=%.1f天 | answer_days=%s | "
-        "query=%r",
+        "[NumericalCompliance] 触发幻觉扣减拦截 | baselines=%s | violations=%s | "
+        "correction_baseline=%.1f天 | query=%r",
+        sorted(baselines),
+        violations,
         baseline_days,
-        reduced_days,
         query[:120],
     )
     return True, correction
