@@ -363,13 +363,29 @@ def split_text_segments(
     segments: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     """
-    使用 LangChain RecursiveCharacterTextSplitter 对文本段落进行分块
-    - chunk_size=500, chunk_overlap=50
+    按 CHUNK_STRATEGY 对文本段落分块。
+    - flat：单层 RecursiveCharacterTextSplitter（CHUNK_SIZE / CHUNK_OVERLAP）
+    - parent_child：segment → Parent → Child 两层切分
+    """
+    if settings.CHUNK_STRATEGY == "parent_child":
+        return _split_text_segments_parent_child(segments)
+    return _split_text_segments_flat(segments)
+
+
+def _split_text_segments_flat(
+    segments: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    flat 模式：LangChain RecursiveCharacterTextSplitter 单层分块
+    - chunk_size / chunk_overlap 由 settings 配置（默认 500 / 50）
     - 每个 chunk 继承来源段落的 page_no 和 section_title
     """
+    chunk_size = settings.CHUNK_SIZE
+    chunk_overlap = settings.CHUNK_OVERLAP
+
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         length_function=len,
     )
 
@@ -397,6 +413,80 @@ def split_text_segments(
                 }
             )
             chunk_index += 1
+
+    return chunks
+
+
+def _split_text_segments_parent_child(
+    segments: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    parent_child 模式：segment 内先切 Parent，再在每个 Parent 内切 Child。
+
+    示例（PARENT=1500/overlap=150, CHILD=300/overlap=30，单 segment 长 2000 字）：
+      Parent[0] 1500字 → Child×5（约 300 字/块）
+      Parent[1]  650字 → Child×3
+    写入顺序：P0, C0..C4, P1, C5..C7；parent_chunk_index 在 doc 内从 0 递增。
+    """
+    parent_overlap = max(1, int(settings.PARENT_CHUNK_SIZE * 0.1))
+    parent_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=settings.PARENT_CHUNK_SIZE,
+        chunk_overlap=parent_overlap,
+        length_function=len,
+    )
+    child_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=settings.CHILD_CHUNK_SIZE,
+        chunk_overlap=settings.CHILD_CHUNK_OVERLAP,
+        length_function=len,
+    )
+
+    chunks: List[Dict[str, Any]] = []
+    chunk_index = 0
+    parent_chunk_index = 0
+
+    for segment in segments:
+        text = segment.get("text", "")
+        if not text.strip():
+            continue
+
+        page_no = segment.get("page_no", 0)
+        section_title = segment.get("section_title", "")
+
+        for parent_text in parent_splitter.split_text(text):
+            parent_text = parent_text.strip()
+            if not parent_text:
+                continue
+
+            current_parent_index = parent_chunk_index
+            chunks.append(
+                {
+                    "chunk_text": parent_text,
+                    "chunk_index": chunk_index,
+                    "page_no": page_no,
+                    "section_title": section_title,
+                    "chunk_role": "parent",
+                    "parent_chunk_index": current_parent_index,
+                }
+            )
+            chunk_index += 1
+
+            for child_text in child_splitter.split_text(parent_text):
+                child_text = child_text.strip()
+                if not child_text:
+                    continue
+                chunks.append(
+                    {
+                        "chunk_text": child_text,
+                        "chunk_index": chunk_index,
+                        "page_no": page_no,
+                        "section_title": section_title,
+                        "chunk_role": "child",
+                        "parent_chunk_index": current_parent_index,
+                    }
+                )
+                chunk_index += 1
+
+            parent_chunk_index += 1
 
     return chunks
 
@@ -449,7 +539,7 @@ async def _embed_and_store_chunks(
     chunks: List[Dict[str, Any]],
 ) -> None:
     """
-    对分块进行向量化，并写入 ChromaDB 与 document_chunks 表
+    写入 document_chunks；flat / child 分块向量化并写入 ChromaDB，parent 仅写 MySQL。
     """
     collection = get_chroma_collection()
 
@@ -458,8 +548,34 @@ async def _embed_and_store_chunks(
         chunk_text = chunk["chunk_text"]
         page_no = chunk.get("page_no", 0)
         section_title = chunk.get("section_title", "")
+        chunk_role = chunk.get("chunk_role")
 
-        # 调用 Ollama 获取向量
+        base_metadata: Dict[str, Any] = {
+            "doc_id": doc_id,
+            "chunk_index": chunk_index,
+            "page_no": page_no,
+            "section_title": section_title,
+            "file_name": file_name,
+        }
+        if chunk_role is not None:
+            base_metadata["chunk_role"] = chunk_role
+            base_metadata["parent_chunk_index"] = chunk.get("parent_chunk_index")
+
+        if chunk_role == "parent":
+            db_chunk = DocumentChunk(
+                doc_id=doc_id,
+                chunk_text=chunk_text,
+                chunk_index=chunk_index,
+                metadata_json=base_metadata,
+            )
+            db.add(db_chunk)
+            db.flush()
+            db_chunk.metadata_json = {
+                **base_metadata,
+                "mysql_chunk_id": db_chunk.id,
+            }
+            continue
+
         embedding = await get_embedding(chunk_text)
         if embedding is None:
             logger.warning(
@@ -469,15 +585,6 @@ async def _embed_and_store_chunks(
             )
             continue
 
-        base_metadata = {
-            "doc_id": doc_id,
-            "chunk_index": chunk_index,
-            "page_no": page_no,
-            "section_title": section_title,
-            "file_name": file_name,
-        }
-
-        # 先写入 MySQL 获取自增主键，再以其作为 ChromaDB 向量 ID 与 RRF 融合标识
         db_chunk = DocumentChunk(
             doc_id=doc_id,
             chunk_text=chunk_text,
@@ -537,6 +644,12 @@ def process_document_background(doc_id: int, file_path: str, file_name: str) -> 
         # 向量化并存储（在同步上下文中运行异步函数）
         asyncio.run(_embed_and_store_chunks(db, doc_id, file_name, chunks))
 
+        parent_count = sum(1 for c in chunks if c.get("chunk_role") == "parent")
+        child_count = sum(
+            1 for c in chunks
+            if c.get("chunk_role") == "child" or c.get("chunk_role") is None
+        )
+
         # 文档入库后刷新 BM25 内存索引
         from app.services.search_service import get_bm25_index
 
@@ -545,8 +658,11 @@ def process_document_background(doc_id: int, file_path: str, file_name: str) -> 
         get_bm25_index().refresh_index()
 
         logger.info(
-            "文档 doc_id=%s 处理完成，共 %s 个分块",
+            "文档 doc_id=%s 处理完成 | strategy=%s | parent=%s | child=%s | total=%s",
             doc_id,
+            settings.CHUNK_STRATEGY,
+            parent_count,
+            child_count,
             len(chunks),
         )
     except Exception as exc:

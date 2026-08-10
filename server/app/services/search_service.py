@@ -12,6 +12,7 @@ import jieba
 from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.document import Document, DocumentChunk
 from app.services.document_processor import get_chroma_collection, get_embedding
@@ -21,9 +22,9 @@ logger = logging.getLogger(__name__)
 # RRF 融合常数 k
 RRF_K: int = 60
 
-# 短文本过滤阈值（字符数）
+# 短文本过滤阈值（字符数）；parent_child 下作用于 child 文本
 MIN_CHUNK_LENGTH: int = 20
-MAX_CHUNK_LENGTH: int = 800
+# BM25 索引长度上限见 settings.SEARCH_MAX_CHUNK_LENGTH（默认 800，应 >= CHILD_CHUNK_SIZE）
 
 # 加权RRF权重
 BM25_WEIGHT = 0.7
@@ -57,15 +58,28 @@ def _tokenize(text: str) -> List[str]:
     text = clean_text(text)
     return list(jieba.cut(text))
 
+def _is_parent_child_mode() -> bool:
+    return settings.CHUNK_STRATEGY == "parent_child"
+
+def _max_index_chunk_length() -> int:
+    return settings.SEARCH_MAX_CHUNK_LENGTH
+
 def _extract_chunk_metadata(chunk: DocumentChunk) -> Dict[str, Any]:
     meta = chunk.metadata_json or {}
-    return {
+    result = {
         "doc_id": chunk.doc_id,
         "chunk_index": chunk.chunk_index,
         "file_name": str(meta.get("file_name", "")),
         "page_no": int(meta.get("page_no", 0)),
         "section_title": str(meta.get("section_title", "")),
     }
+    chunk_role = meta.get("chunk_role")
+    if chunk_role is not None:
+        result["chunk_role"] = str(chunk_role)
+    parent_chunk_index = meta.get("parent_chunk_index")
+    if parent_chunk_index is not None:
+        result["parent_chunk_index"] = int(parent_chunk_index)
+    return result
 
 def _resolve_mysql_chunk_id(
     chroma_id: str,
@@ -118,6 +132,7 @@ class BM25Index:
         self._chunk_ids: List[str] = []
         self._chunk_texts: List[str] = []
         self._chunk_metadata: Dict[str, Dict[str, Any]] = {}
+        self._parent_texts: Dict[Tuple[int, int], str] = {}
         self._initialized = True
         self.refresh_index()
 
@@ -139,15 +154,33 @@ class BM25Index:
             new_chunk_ids: List[str] = []
             new_chunk_texts: List[str] = []
             new_chunk_metadata: Dict[str, Dict[str, Any]] = {}
+            new_parent_texts: Dict[Tuple[int, int], str] = {}
             tokenized_corpus: List[List[str]] = []
             skipped_count = 0
+            max_chunk_length = _max_index_chunk_length()
+            parent_child_mode = _is_parent_child_mode()
 
             for chunk in chunks:
+                meta = chunk.metadata_json or {}
+                chunk_role = meta.get("chunk_role")
+
+                if parent_child_mode:
+                    if chunk_role == "parent":
+                        parent_idx = meta.get("parent_chunk_index")
+                        if parent_idx is not None:
+                            new_parent_texts[(chunk.doc_id, int(parent_idx))] = clean_text(
+                                chunk.chunk_text
+                            )
+                        continue
+                    if chunk_role != "child":
+                        skipped_count += 1
+                        continue
+
                 chunk_text = clean_text(chunk.chunk_text)
-                if "压力测试专用" in chunk_text and len(chunk_text) > MAX_CHUNK_LENGTH:
+                if "压力测试专用" in chunk_text and len(chunk_text) > max_chunk_length:
                     skipped_count += 1
                     continue
-                if len(chunk_text) < MIN_CHUNK_LENGTH or len(chunk_text) > MAX_CHUNK_LENGTH:
+                if len(chunk_text) < MIN_CHUNK_LENGTH or len(chunk_text) > max_chunk_length:
                     skipped_count += 1
                     continue
 
@@ -170,8 +203,13 @@ class BM25Index:
             self._chunk_ids = new_chunk_ids
             self._chunk_texts = new_chunk_texts
             self._chunk_metadata = new_chunk_metadata
+            self._parent_texts = new_parent_texts
             
-            logger.info("[BM25Index] 索引热刷新完成，当前共有 %d 个文本块", len(self._chunk_ids))
+            logger.info(
+                "[BM25Index] 索引热刷新完成，当前共有 %d 个文本块，parent 缓存 %d 条",
+                len(self._chunk_ids),
+                len(self._parent_texts),
+            )
         except Exception as exc:
             logger.exception("[BM25Index] 索引刷新失败: %s", exc)
         finally:
@@ -226,6 +264,10 @@ class BM25Index:
             return {"text": self._chunk_texts[idx], **self._chunk_metadata[chunk_id]}
         except ValueError:
             return None
+
+    def get_parent_text(self, doc_id: int, parent_chunk_index: int) -> Optional[str]:
+        """parent_child 模式下按 doc_id + parent_chunk_index 取 parent 文本"""
+        return self._parent_texts.get((doc_id, parent_chunk_index))
 
 def get_bm25_index() -> BM25Index:
     return BM25Index()
@@ -291,11 +333,16 @@ async def chroma_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
         if len(metadatas) < len(ids):
             metadatas = list(metadatas) + [{}] * (len(ids) - len(metadatas))
 
+        parent_child_mode = _is_parent_child_mode()
+
         for chunk_id, doc_text, metadata, distance in zip(ids, documents, metadatas, distances):
             if len(search_items) >= limit:
                 break
 
             meta = metadata or {}
+            if parent_child_mode and meta.get("chunk_role") != "child":
+                continue
+
             doc_id = meta.get("doc_id")
             if doc_id is not None and int(doc_id) in deleting_doc_ids:
                 continue
@@ -359,25 +406,61 @@ def rrf_fusion(
 
 def _enrich_results(fused_results: List[Dict[str, Any]], bm25_index: BM25Index) -> List[Dict[str, Any]]:
     enriched: List[Dict[str, Any]] = []
+    parent_child_mode = _is_parent_child_mode()
+
     for item in fused_results:
         chunk_id = str(item["chunk_id"])
         chunk_info = bm25_index.get_chunk_info(chunk_id)
         metadata = item.get("metadata") or {}
 
         if chunk_info:
-            text = chunk_info["text"]
+            child_text = chunk_info["text"]
             file_name = chunk_info["file_name"]
             page_no = chunk_info["page_no"]
             section_title = chunk_info["section_title"]
+            doc_id = int(chunk_info.get("doc_id", metadata.get("doc_id", 0)))
+            parent_chunk_index = chunk_info.get("parent_chunk_index", metadata.get("parent_chunk_index"))
         else:
-            text = item.get("text", "")
+            child_text = item.get("text", "")
             file_name = str(metadata.get("file_name", ""))
             page_no = int(metadata.get("page_no", 0))
             section_title = str(metadata.get("section_title", ""))
+            doc_id = int(metadata.get("doc_id", 0))
+            parent_chunk_index = metadata.get("parent_chunk_index")
+
+        if parent_child_mode:
+            if parent_chunk_index is not None:
+                parent_chunk_index = int(parent_chunk_index)
+            parent_text = (
+                bm25_index.get_parent_text(doc_id, parent_chunk_index)
+                if parent_chunk_index is not None
+                else None
+            )
+            llm_text = parent_text if parent_text else child_text
+            if parent_chunk_index is not None and not parent_text:
+                logger.warning(
+                    "[HybridSearch] 未找到 parent 文本 | doc_id=%s parent_chunk_index=%s child_id=%s",
+                    doc_id,
+                    parent_chunk_index,
+                    chunk_id,
+                )
+
+            enriched.append({
+                "chunk_id": chunk_id,
+                "text": llm_text,
+                "child_text": child_text,
+                "chunk_role": "child",
+                "parent_chunk_index": parent_chunk_index,
+                "final_rrf_score": item["final_rrf_score"],
+                "file_name": file_name,
+                "page_no": page_no,
+                "section_title": section_title,
+            })
+            continue
 
         enriched.append({
             "chunk_id": chunk_id,
-            "text": text,
+            "text": child_text,
             "final_rrf_score": item["final_rrf_score"],
             "file_name": file_name,
             "page_no": page_no,
