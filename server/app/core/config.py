@@ -92,6 +92,9 @@ class Settings:
     # 检索侧 BM25 索引文本长度上限（默认 800；parent_child 下应 >= CHILD_CHUNK_SIZE）
     SEARCH_MAX_CHUNK_LENGTH: int = int(os.getenv("SEARCH_MAX_CHUNK_LENGTH", "800"))
 
+    # 混合检索粗排每路召回上限
+    SEARCH_COARSE_RECALL_LIMIT: int = int(os.getenv("SEARCH_COARSE_RECALL_LIMIT", "30"))
+
 
 # 全局配置单例
 settings = Settings()

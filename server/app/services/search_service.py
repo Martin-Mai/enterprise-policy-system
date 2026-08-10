@@ -468,21 +468,48 @@ def _enrich_results(fused_results: List[Dict[str, Any]], bm25_index: BM25Index) 
         })
     return enriched
 
+async def _coarse_candidates(
+    query: str, final_k: int
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """粗排候选池：双路 Top-N 召回 + RRF 融合（阶段 B 用 RRF 分占位）"""
+    per_route_limit = max(settings.SEARCH_COARSE_RECALL_LIMIT, final_k * 2)
+    chroma_hits, bm25_hits = await _parallel_retrieve(query, per_route_limit)
+
+    if not chroma_hits and not bm25_hits:
+        return [], chroma_hits, bm25_hits
+
+    fused = rrf_fusion(chroma_hits, bm25_hits, limit=per_route_limit)
+    fused = [r for r in fused if len(r.get("text", "").strip()) >= MIN_CHUNK_LENGTH]
+    candidates = fused[:per_route_limit]
+    return candidates, chroma_hits, bm25_hits
+
+
+def _select_for_llm(candidates: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]]:
+    # TODO: 将来替换为 Cross-Encoder Rerank
+    sorted_candidates = sorted(
+        candidates, key=lambda item: item.get("final_rrf_score", 0.0), reverse=True
+    )
+    return sorted_candidates[:k]
+
+
 async def hybrid_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
     """双路混合检索主入口"""
     try:
-        per_route_limit = max(15, limit * 2)
-        chroma_results, bm25_results = await _parallel_retrieve(query, per_route_limit)
-        
-        logger.info("[HybridSearch] Query: %s | Chroma Hits: %d | BM25 Hits: %d", query, len(chroma_results), len(bm25_results))
-        if not chroma_results and not bm25_results:
+        candidates, chroma_hits, bm25_hits = await _coarse_candidates(query, final_k=limit)
+        selected = _select_for_llm(candidates, k=limit)
+
+        logger.info(
+            "[HybridSearch] Query: %s | Coarse: %d | Selected: %d | Chroma Hits: %d | BM25 Hits: %d",
+            query,
+            len(candidates),
+            len(selected),
+            len(chroma_hits),
+            len(bm25_hits),
+        )
+        if not selected:
             return []
 
-        fused = rrf_fusion(chroma_results, bm25_results, limit=per_route_limit)
-        fused = [r for r in fused if len(r.get("text", "").strip()) >= MIN_CHUNK_LENGTH]
-        fused = fused[:limit]
-
-        return _enrich_results(fused, get_bm25_index())
+        return _enrich_results(selected, get_bm25_index())
     except Exception as exc:
         logger.exception("[HybridSearch] 混合检索失败: %s", exc)
         return []
