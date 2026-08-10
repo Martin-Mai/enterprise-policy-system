@@ -14,7 +14,10 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.migrations import run_schema_patches
 from app.api import auth, admin, documents, chat, feedback, conversations
+from starlette.concurrency import run_in_threadpool
+
 from app.services.ollama_warmup import get_warmup_status, warmup_ollama_models
+from app.services.rerank_service import get_reranker
 from app.services.search_service import get_bm25_index
 
 # 配置基础日志，便于后台文档处理任务输出调试信息
@@ -76,9 +79,11 @@ app.include_router(feedback.router)
 
 @app.on_event("startup")
 async def startup_init() -> None:
-    """应用启动：构建 BM25 索引，并后台异步预热 Ollama 模型"""
+    """应用启动：构建 BM25 索引，并后台异步预热 Ollama 与 Rerank 模型"""
     get_bm25_index()
     asyncio.create_task(warmup_ollama_models())
+    if settings.RERANK_ENABLED:
+        asyncio.create_task(run_in_threadpool(get_reranker))
 
 
 @app.get("/", tags=["健康检查"])
