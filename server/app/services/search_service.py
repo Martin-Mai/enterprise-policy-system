@@ -11,11 +11,13 @@ from typing import Any, Dict, List, Optional, Tuple
 import jieba
 from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.document import Document, DocumentChunk
 from app.services.document_processor import get_chroma_collection, get_embedding
+from app.services.rerank_service import rerank_candidates
 
 logger = logging.getLogger(__name__)
 
@@ -445,7 +447,7 @@ def _enrich_results(fused_results: List[Dict[str, Any]], bm25_index: BM25Index) 
                     chunk_id,
                 )
 
-            enriched.append({
+            row = {
                 "chunk_id": chunk_id,
                 "text": llm_text,
                 "child_text": child_text,
@@ -455,17 +457,23 @@ def _enrich_results(fused_results: List[Dict[str, Any]], bm25_index: BM25Index) 
                 "file_name": file_name,
                 "page_no": page_no,
                 "section_title": section_title,
-            })
+            }
+            if "rerank_score" in item:
+                row["rerank_score"] = item["rerank_score"]
+            enriched.append(row)
             continue
 
-        enriched.append({
+        row = {
             "chunk_id": chunk_id,
             "text": child_text,
             "final_rrf_score": item["final_rrf_score"],
             "file_name": file_name,
             "page_no": page_no,
             "section_title": section_title,
-        })
+        }
+        if "rerank_score" in item:
+            row["rerank_score"] = item["rerank_score"]
+        enriched.append(row)
     return enriched
 
 async def _coarse_candidates(
@@ -484,22 +492,22 @@ async def _coarse_candidates(
     return candidates, chroma_hits, bm25_hits
 
 
-def _select_for_llm(candidates: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]]:
-    # TODO: 将来替换为 Cross-Encoder Rerank
-    sorted_candidates = sorted(
-        candidates, key=lambda item: item.get("final_rrf_score", 0.0), reverse=True
-    )
-    return sorted_candidates[:k]
+async def _select_for_llm(
+    query: str, candidates: List[Dict[str, Any]], k: int
+) -> List[Dict[str, Any]]:
+    if not candidates:
+        return []
+    return await run_in_threadpool(rerank_candidates, query, candidates, k)
 
 
 async def hybrid_search(query: str, limit: int = 5) -> List[Dict[str, Any]]:
     """双路混合检索主入口"""
     try:
         candidates, chroma_hits, bm25_hits = await _coarse_candidates(query, final_k=limit)
-        selected = _select_for_llm(candidates, k=limit)
+        selected = await _select_for_llm(query, candidates, k=limit)
 
         logger.info(
-            "[HybridSearch] Query: %s | Coarse: %d | Selected: %d | Chroma Hits: %d | BM25 Hits: %d",
+            "[HybridSearch] Query: %s | Coarse: %d | Rerank: %d | Chroma Hits: %d | BM25 Hits: %d",
             query,
             len(candidates),
             len(selected),

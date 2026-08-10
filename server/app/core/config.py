@@ -95,6 +95,14 @@ class Settings:
     # 混合检索粗排每路召回上限
     SEARCH_COARSE_RECALL_LIMIT: int = int(os.getenv("SEARCH_COARSE_RECALL_LIMIT", "30"))
 
+    # Cross-Encoder 精排（transformers 本地加载，非 Ollama）
+    RERANK_ENABLED: bool = os.getenv("RERANK_ENABLED", "true").lower() in ("1", "true", "yes")
+    RERANK_MODEL: str = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
+    # auto：有 CUDA 则用 GPU；cuda / cpu 可强制指定
+    RERANK_DEVICE: str = os.getenv("RERANK_DEVICE", "auto")
+    RERANK_MAX_CHARS: int = int(os.getenv("RERANK_MAX_CHARS", "512"))
+    RERANK_MAX_LENGTH: int = int(os.getenv("RERANK_MAX_LENGTH", "512"))
+
 
 # 全局配置单例
 settings = Settings()
