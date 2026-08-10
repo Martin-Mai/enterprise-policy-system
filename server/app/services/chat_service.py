@@ -28,6 +28,9 @@ FALLBACK_HISTORY_ROUNDS: int = 3
 FALLBACK_HISTORY_MESSAGES: int = FALLBACK_HISTORY_ROUNDS * 2
 MAX_HISTORY_CHARS: int = 3000
 
+# RAG 参考资料传入 LLM 的单条长度上限（parent_child 下 text 为 parent 级上下文）
+MAX_RAG_CHUNK_CHARS: int = 2000
+
 _CITATION_PATTERN = re.compile(r"\[(\d+)\]")
 
 
@@ -117,17 +120,24 @@ def _format_messages(messages: List[Message]) -> str:
     return "\n".join(parts) + "\n"
 
 
+def _truncate_for_prompt(text: str, max_chars: int = MAX_RAG_CHUNK_CHARS) -> str:
+    """parent 级上下文过长时截断，避免撑爆 prompt"""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "…（节选）"
+
+
 def build_rag_prompt(
     question: str,
     history: str,
     chunks: List[Dict[str, Any]],
 ) -> str:
-    """构建 RAG 强约束 Prompt，chunk 文本必须 100% 完整传入"""
+    """构建 RAG 强约束 Prompt；text 字段在 parent_child 下已为 parent 级上下文"""
     ref_lines: List[str] = []
     for index, chunk in enumerate(chunks, start=1):
         file_name = chunk.get("file_name", "")
         page_no = chunk.get("page_no", 0)
-        chunk_text = chunk.get("text", "")
+        chunk_text = _truncate_for_prompt(chunk.get("text", ""))
         ref_lines.append(f"[{index}] 文档：{file_name} 第{page_no}页: {chunk_text}")
 
     refs_text = "\n".join(ref_lines) if ref_lines else "（无参考资料）"
@@ -180,13 +190,13 @@ def parse_citations(
     citations: List[Dict[str, Any]] = []
     for index in used_indices:
         chunk = chunks[index - 1]
-        text = chunk.get("text", "")
+        preview_source = chunk.get("child_text") or chunk.get("text", "")
         citations.append({
             "chunk_id": str(chunk.get("chunk_id", "")),
             "file_name": str(chunk.get("file_name", "")),
             "page_no": int(chunk.get("page_no", 0)),
             "section_title": str(chunk.get("section_title", "")),
-            "text_preview": text[:200],
+            "text_preview": preview_source[:200],
             "inferred": auto_inferred if auto_inferred else None,
         })
 

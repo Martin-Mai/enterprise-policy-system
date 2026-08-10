@@ -77,6 +77,21 @@ class Settings:
     # 文档上传大小限制（字节），默认 10MB
     MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))
 
+    # 文本分块策略：flat（单层）/ parent_child（父子块）
+    CHUNK_STRATEGY: str = os.getenv("CHUNK_STRATEGY", "flat")
+
+    # flat 模式分块参数
+    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "500"))
+    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "50"))
+
+    # parent_child 模式参数
+    PARENT_CHUNK_SIZE: int = int(os.getenv("PARENT_CHUNK_SIZE", "1500"))
+    CHILD_CHUNK_SIZE: int = int(os.getenv("CHILD_CHUNK_SIZE", "300"))
+    CHILD_CHUNK_OVERLAP: int = int(os.getenv("CHILD_CHUNK_OVERLAP", "30"))
+
+    # 检索侧 BM25 索引文本长度上限（默认 800；parent_child 下应 >= CHILD_CHUNK_SIZE）
+    SEARCH_MAX_CHUNK_LENGTH: int = int(os.getenv("SEARCH_MAX_CHUNK_LENGTH", "800"))
+
 
 # 全局配置单例
 settings = Settings()

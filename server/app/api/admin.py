@@ -7,6 +7,7 @@ import json
 import logging
 from collections import Counter
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -40,7 +41,7 @@ from app.schemas.feedback import (
     AdminFeedbackListResponse,
 )
 from app.schemas.user import UserResponse
-from app.services.document_processor import delete_document_background
+from app.services.document_processor import delete_document_background, process_document_background
 from app.services.search_service import get_bm25_index
 
 logger = logging.getLogger(__name__)
@@ -326,12 +327,13 @@ def admin_delete_document(
 @router.post("/documents/reindex/{doc_id}", response_model=DocumentReindexResponse)
 def reindex_document(
     doc_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin),
 ) -> DocumentReindexResponse:
     """
-    重新向量化文档（骨架接口）
-    校验文档存在后返回成功，实际向量化任务待后续接入
+    重新向量化文档：清除旧分块后按当前 CHUNK_STRATEGY 重新 parse + split + embed。
+    批量重建请使用 server/scripts/reindex_all_documents.py。
     """
     _ = current_admin
     document = db.query(Document).filter(Document.id == doc_id).first()
@@ -347,15 +349,34 @@ def reindex_document(
             detail="文档正在删除中，无法重新向量化",
         )
 
+    if document.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="仅 active 状态文档可重建索引",
+        )
+
+    if not document.file_path or not Path(document.file_path).exists():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="文档源文件不存在，无法重新向量化",
+        )
+
+    background_tasks.add_task(
+        process_document_background,
+        doc_id,
+        document.file_path,
+        document.file_name,
+    )
+
     logger.info(
-        "[AdminReindex] doc_id=%s file_name=%s 重新向量化请求已受理（骨架）",
+        "[AdminReindex] doc_id=%s file_name=%s 重建索引任务已提交",
         doc_id,
         document.file_name,
     )
 
     return DocumentReindexResponse(
-        status="success",
-        message=f"文档「{document.file_name}」重新向量化任务已提交",
+        status="processing",
+        message=f"文档「{document.file_name}」重建索引任务已提交",
     )
 
 
