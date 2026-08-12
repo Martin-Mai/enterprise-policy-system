@@ -112,6 +112,42 @@ POST /api/documents/{doc_id}/reprocess
 | `server/app/services/chat_service.py` | RAG Prompt、citation |
 | `server/scripts/reindex_all_documents.py` | 批量/单文档重建索引 |
 
-## 效果对比（flat vs parent_child）
+## 如何运行 retrieval eval
 
-若仓库中存在 `eval/run_retrieval_eval.py`，可在分别设置 `CHUNK_STRATEGY=flat` 与 `parent_child`、完成 reindex 后，对同一评测集各跑一遍，对比 Hit@K / MRR 等指标。当前未内置该脚本时，可通过 Admin 检索 API 或聊天手测（见项目验收用例）对同一 query 比较返回 chunk 粒度与回答完整性。
+在仓库根目录（需已激活 `server/.venv` 并安装 `eval/requirements-eval.txt`）：
+
+```bash
+pip install -r eval/requirements-eval.txt
+python eval/run_retrieval_eval.py              # 全量 62 条，对比 rerank on/off
+python eval/run_retrieval_eval.py --limit 5    # 快速调试
+```
+
+Golden Query 共 62 条（baseline 22 + hard 32 + 拒答 8）。报告含 **Strict / Effective Recall**、多文档 Strict、拒答误检索率、rerank 翻转样本。主看 **Effective Recall**（单文档 any-recall，多文档 strict-recall）。
+
+## 如何生成 RAGAS 评测用例（generate_cases）
+
+```bash
+pip install -r eval/requirements-eval.txt
+python eval/generate_cases.py --config eval/config.yaml   # drafts + ragas_cases
+python eval/generate_cases.py --draft-only                # 仅 LLM 草稿与过滤
+python eval/generate_cases.py --finalize                  # 仅合并为 ragas_cases.jsonl
+```
+
+输出：`eval/datasets/drafts_100.jsonl`、`filtered_80.jsonl`、`ragas_cases.jsonl`（50 条，20/20/10 tier）。
+
+## 如何运行 RAGAS 评测（run_ragas_eval.py）
+
+```bash
+python eval/run_ragas_eval.py --config eval/config.yaml --limit 5
+python eval/run_ragas_eval.py --output eval/outputs/ragas_results.csv
+```
+
+Judge 与依赖说明见 `eval/RAGAS_SETUP.md`。`DASHSCOPE_API_KEY` 可写在 `eval/.env` 或 `server/.env`。
+
+**调试**：`python eval/run_ragas_eval.py --limit 1 --rerank-enabled`
+
+**正式全量**（勿用 `--limit` / `--no-rerank`）：
+
+```bash
+python eval/run_ragas_eval.py --config eval/config.yaml --rerank-enabled
+```

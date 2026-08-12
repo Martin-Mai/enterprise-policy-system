@@ -1,0 +1,67 @@
+# Retrieval eval 配置（路径均相对于本文件所在 eval/ 目录）
+
+dataset_path: datasets/golden_queries.json
+output_dir: outputs
+
+# 检索参数
+search_top_k: 5
+rerank_enabled: true
+confidence_score_field: rerank_score   # 备选: final_rrf_score
+
+# --- 置信度门控阈值（第 4 批 calibrate_thresholds.py 推荐，勿写死到 server/.env）---
+# 运行: python eval/calibrate_thresholds.py --config eval/config.yaml --input eval/outputs/ragas_results.csv
+# CONFIDENCE_HIGH_THRESHOLD: 6.3734   # T_high: tier=high 且 faithfulness>=0.9 的 top1_rerank_score P95
+# CONFIDENCE_LOW_THRESHOLD: -3.6671    # T_low: tier=low 且应拒且已拒 的 top1_rerank_score P95（拒答上界）
+# 第 5 批接入 chat.py 时从 threshold_recommendation.json 读取并写入运行时配置
+
+# server 环境（用于 DATABASE_URL、Ollama、Chroma 等）
+server_env_path: ../server/.env
+
+# 报告
+report_json: retrieval_report.json
+report_md: retrieval_report.md
+
+# --- RAGAS 用例生成（generate_cases.py）---
+test_datasets_path: ../test_datasets
+golden_queries_path: datasets/golden_queries.json
+drafts_path: datasets/drafts_100.jsonl
+filtered_path: datasets/filtered_80.jsonl
+ragas_dataset_path: datasets/ragas_cases.jsonl
+
+draft_count: 100
+filtered_count: 80
+final_count: 50
+tier_ratio:
+  high: 20
+  medium: 20
+  low: 10
+
+# Ollama 生成（默认与 server/.env 一致，可在此覆盖）
+ollama_generate_url: http://localhost:11434/api/generate
+ollama_model: qwen2.5:7b
+ollama_timeout: 300
+ollama_keep_alive: 30m
+
+# --- RAGAS 评测（run_ragas_eval.py）---
+ragas_dataset_path: datasets/ragas_cases.jsonl
+ragas_results_csv: ragas_results.csv
+refusal_phrase: "未找到相关信息"
+
+ragas_metrics:
+  faithfulness: true
+  answer_relevancy: true
+  # context_precision: false   # 可选，默认关闭
+
+# RAGAS judge：Faithfulness / Answer Relevancy 评判 LLM
+# provider=dashscope：百炼 OpenAI 兼容 API（推荐，需 DASHSCOPE_API_KEY）
+# provider=ollama：本地 judge（易 parse 失败）；provider=none：跳过打分
+ragas_judge:
+  provider: dashscope
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model: qwen-plus          # 正式 judge；qwen-turbo 对中文 Faithfulness 易 NaN
+  embedding_provider: ollama
+  embedding_model: nomic-embed-text
+  embedding_base_url: http://localhost:11434
+  timeout: 120
+  run_timeout: 300
+  max_workers: 4

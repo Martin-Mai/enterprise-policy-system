@@ -170,3 +170,29 @@ def run_schema_patches(engine: Engine) -> None:
                     )
                 )
                 logger.info("[Migration] feedbacks.message_id 外键已改为 CASCADE")
+
+        if not _column_exists(engine, "audit_logs", "confidence_score"):
+            logger.info("[Migration] 为 audit_logs 表添加 confidence_score 列")
+            conn.execute(
+                text(
+                    """
+                    ALTER TABLE audit_logs
+                    ADD COLUMN confidence_score DOUBLE NULL
+                        COMMENT 'Top-1 检索置信度分数（rerank_score 或 final_rrf_score）'
+                    """
+                )
+            )
+            logger.info("[Migration] audit_logs.confidence_score 列已就绪")
+
+        if not _column_exists(engine, "audit_logs", "gate_decision"):
+            logger.info("[Migration] 为 audit_logs 表添加 gate_decision 列")
+            conn.execute(
+                text(
+                    """
+                    ALTER TABLE audit_logs
+                    ADD COLUMN gate_decision VARCHAR(16) NULL
+                        COMMENT '置信度门控决策：normal / cautious / refuse'
+                    """
+                )
+            )
+            logger.info("[Migration] audit_logs.gate_decision 列已就绪")

@@ -31,6 +31,8 @@ MAX_HISTORY_CHARS: int = 3000
 # RAG 参考资料传入 LLM 的单条长度上限（parent_child 下 text 为 parent 级上下文）
 MAX_RAG_CHUNK_CHARS: int = 2000
 
+REFUSAL_MESSAGE = "未找到相关信息"
+
 _CITATION_PATTERN = re.compile(r"\[(\d+)\]")
 
 
@@ -131,6 +133,7 @@ def build_rag_prompt(
     question: str,
     history: str,
     chunks: List[Dict[str, Any]],
+    mode: str = "normal",
 ) -> str:
     """构建 RAG 强约束 Prompt；text 字段在 parent_child 下已为 parent 级上下文"""
     ref_lines: List[str] = []
@@ -143,14 +146,27 @@ def build_rag_prompt(
     refs_text = "\n".join(ref_lines) if ref_lines else "（无参考资料）"
     history_section = history.strip() if history.strip() else "（无历史对话）"
 
+    cautious_section = ""
+    if mode == "cautious":
+        cautious_section = (
+            "\n【谨慎模式补充】：\n"
+            "参考资料可能不足或与企业内部文档无关。若无法从资料中可靠回答，"
+            f'请仅回复："{REFUSAL_MESSAGE}"，不要编造。\n'
+            "对于与企业文档无关的问题（如天气、股价、写诗、加密货币等），"
+            f'也必须仅回复："{REFUSAL_MESSAGE}"。\n'
+        )
+
     return (
         "你是一个严谨的企业内部知识库助手。请严格基于以下参考资料回答用户的问题。\n\n"
         "【核心合规红线】：\n"
-        '1. 如果参考资料不足、不相关或无法推导出答案，请明确且仅说明："未找到相关信息"。'
+        f'1. 如果参考资料不足、不相关或无法推导出答案，请明确且仅说明："{REFUSAL_MESSAGE}"。'
         "绝对禁止凭借自身知识编造、胡扯或幻觉任何公司制度。\n"
-        "2. 回答时，必须在提及相关知识点的句尾，强制附上对应的参考资料引用编号（例如：...报销上限为500元[1]）。\n"
-        "3. 当用户明确表示「未休/未使用/从未消耗」时，必须输出制度规定的【全额总额度】，"
-        "严禁凭空假设已消耗量并做减法（如 10-5=5）。\n\n"
+        "2. 与企业内部文档无关的通用问题（如天气、股价、写诗、加密货币、娱乐八卦等），"
+        f'必须仅回复："{REFUSAL_MESSAGE}"，不得调用自身知识作答。\n'
+        "3. 回答时，必须在提及相关知识点的句尾，强制附上对应的参考资料引用编号（例如：...报销上限为500元[1]）。\n"
+        "4. 当用户明确表示「未休/未使用/从未消耗」时，必须输出制度规定的【全额总额度】，"
+        "严禁凭空假设已消耗量并做减法（如 10-5=5）。\n"
+        f"{cautious_section}\n"
         f"{PLAIN_TEXT_MATH_FORMAT_PROTOCOL}\n\n"
         f"{NUMERICAL_COMPLIANCE_AUDIT_PROTOCOL}\n\n"
         f"【参考资料】：\n{refs_text}\n\n"
@@ -158,6 +174,15 @@ def build_rag_prompt(
         f"用户问题：{question}\n"
         "请给出准确、简洁的专业公文风回答，并在涉及到的答案末尾或句尾清晰标注引用编号（如 [1]）。"
     )
+
+
+def build_cautious_rag_prompt(
+    question: str,
+    history: str,
+    chunks: List[Dict[str, Any]],
+) -> str:
+    """构建 cautious 模式 RAG Prompt（兼容别名）"""
+    return build_rag_prompt(question, history, chunks, mode="cautious")
 
 
 def parse_citations(
@@ -261,6 +286,8 @@ def log_audit_background(
     retrieved_chunks: List[Dict[str, Any]],
     answer: str,
     citations: List[Dict[str, Any]],
+    confidence_score: Optional[float] = None,
+    gate_decision: Optional[str] = None,
 ) -> None:
     """
     后台异步审计落库（由 FastAPI BackgroundTasks 在独立线程中延迟执行）。
@@ -275,15 +302,19 @@ def log_audit_background(
                 retrieved_chunks=retrieved_chunks,
                 answer=answer,
                 citations=citations or None,
+                confidence_score=confidence_score,
+                gate_decision=gate_decision,
             )
             db.add(audit_record)
             db.commit()
             logger.info(
-                "[AuditLog] 审计日志入库成功 | user_id=%s | audit_id=%s | chunks=%d | citations=%d",
+                "[AuditLog] 审计日志入库成功 | user_id=%s | audit_id=%s | chunks=%d | citations=%d | gate=%s | score=%s",
                 user_id,
                 audit_record.id,
                 len(retrieved_chunks),
                 len(citations),
+                gate_decision,
+                confidence_score,
             )
         except SQLAlchemyError as exc:
             db.rollback()

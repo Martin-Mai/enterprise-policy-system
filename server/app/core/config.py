@@ -103,6 +103,18 @@ class Settings:
     RERANK_MAX_CHARS: int = int(os.getenv("RERANK_MAX_CHARS", "512"))
     RERANK_MAX_LENGTH: int = int(os.getenv("RERANK_MAX_LENGTH", "512"))
 
+    # RAG 置信度门控（第 4 批 calibrate_thresholds.py 校准，见 eval/outputs/threshold_recommendation.json）
+    CONFIDENCE_GATE_ENABLED: bool = os.getenv(
+        "CONFIDENCE_GATE_ENABLED", "true"
+    ).lower() in ("1", "true", "yes")
+    CONFIDENCE_HIGH_THRESHOLD: float = float(
+        os.getenv("CONFIDENCE_HIGH_THRESHOLD", "6.3734")
+    )
+    CONFIDENCE_LOW_THRESHOLD: float = float(
+        os.getenv("CONFIDENCE_LOW_THRESHOLD", "-3.6671")
+    )
+    CONFIDENCE_SCORE_FIELD: str = os.getenv("CONFIDENCE_SCORE_FIELD", "rerank_score")
+
 
 # 全局配置单例
 settings = Settings()

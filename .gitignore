@@ -73,3 +73,13 @@ Thumbs.db
 
 /chroma_data/
 /chroma.sqlite3
+
+# eval 运行时产物（可重新生成）
+eval/outputs/run_*/
+eval/outputs/*.csv
+eval/.env
+
+# 可选：报告类产物也忽略，只保留 .gitkeep
+eval/outputs/*.json
+eval/outputs/*.md
+eval/outputs/*.png

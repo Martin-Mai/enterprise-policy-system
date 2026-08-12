@@ -5,7 +5,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -43,6 +43,18 @@ class AuditLog(Base):
         JSON,
         nullable=True,
         comment="解析并使用的有效引用列表",
+    )
+
+    confidence_score = Column(
+        Float,
+        nullable=True,
+        comment="Top-1 检索置信度分数（rerank_score 或 final_rrf_score）",
+    )
+
+    gate_decision = Column(
+        String(16),
+        nullable=True,
+        comment="置信度门控决策：normal / cautious / refuse",
     )
 
     created_at = Column(

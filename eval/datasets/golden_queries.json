@@ -1,0 +1,530 @@
+[
+  {
+    "id": "gq001",
+    "question": "SM-080-A 伺服电机最终选型验收应该以哪个扭矩数值为准？",
+    "tier": "high",
+    "expected_files": ["04-product-servo-motor.pdf"],
+    "must_contain_in_context": ["14.2", "实测修正"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq002",
+    "question": "型号 SM-080-A 在额定转速 3000 r/min 下的理论计算扭矩是多少？",
+    "tier": "medium",
+    "expected_files": ["04-product-servo-motor.pdf"],
+    "must_contain_in_context": ["12.5", "扭矩"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq003",
+    "question": "2025 年第三季度智能制造产线升级专项的正式预算批复金额是多少？",
+    "tier": "high",
+    "expected_files": ["05-financial-budget-q3.pdf"],
+    "must_contain_in_context": ["12,345,000", "预算批复"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq004",
+    "question": "2025-Q3 各成本中心合计实际执行支出是多少？",
+    "tier": "medium",
+    "expected_files": ["05-financial-budget-q3.pdf"],
+    "must_contain_in_context": ["11,980,000", "执行"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq005",
+    "question": "员工提交年假申请时，休假审批流程的第一受理单位是哪个部门？",
+    "tier": "high",
+    "expected_files": ["06-hr-attendance-normal.pdf"],
+    "must_contain_in_context": ["人力资源中心"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq006",
+    "question": "各类休假审批完成后，由哪个部门统一归档保存？",
+    "tier": "medium",
+    "expected_files": ["06-hr-attendance-normal.pdf"],
+    "must_contain_in_context": ["人资部", "归档"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq007",
+    "question": "XX 智能产线项目设备采购合同中，最终验收标准是什么？",
+    "tier": "high",
+    "expected_files": ["07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["连续无故障运行", "30"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq008",
+    "question": "CT-2025-ALPHA-09 合同中验收款占合同总价的比例是多少？",
+    "tier": "medium",
+    "expected_files": ["07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["25%", "验收款"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq009",
+    "question": "Delta 智能产线项目为什么最终未通过验收并拒绝支付尾款？",
+    "tier": "high",
+    "expected_files": ["08-project-summary-delta.pdf", "07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["主轴重复定位精度", "未通过验收"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq010",
+    "question": "Delta 项目主要设备采购依据哪份合同执行？",
+    "tier": "medium",
+    "expected_files": ["08-project-summary-delta.pdf"],
+    "must_contain_in_context": ["CT-2025-ALPHA-09", "07-contract-project-alpha"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq011",
+    "question": "生产现场发生灼烫伤事故时，第一发现人应立即采取什么措施？",
+    "tier": "high",
+    "expected_files": ["09-ops-emergency-dense.pdf"],
+    "must_contain_in_context": ["急停", "动力源"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq012",
+    "question": "发生机械伤害事故时，现场应急指挥第一责任人是谁？",
+    "tier": "medium",
+    "expected_files": ["09-ops-emergency-dense.pdf"],
+    "must_contain_in_context": ["车间主任"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq013",
+    "question": "Model-X9000-V2_Beta 系列特种设备在型号更替期间的研发权限如何隔离？",
+    "tier": "high",
+    "expected_files": ["03_edge_cases_symbols.pdf"],
+    "must_contain_in_context": ["Model-X9000-V2_Beta", "权限"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq014",
+    "question": "边缘符号白皮书中用于折旧系数演算示例的圆周率测试字段是多少？",
+    "tier": "medium",
+    "expected_files": ["03_edge_cases_symbols.pdf", "02_boundary_cases.md"],
+    "must_contain_in_context": ["3.1415926"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq015",
+    "question": "集团财务审计中，单笔对外付款超过多少金额须 CFO 书面签批？",
+    "tier": "high",
+    "expected_files": ["01_financial_audit_2026.pdf"],
+    "must_contain_in_context": ["10万元", "CFO"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq016",
+    "question": "2026 年度集团财务审计报告的文件编号是什么？",
+    "tier": "medium",
+    "expected_files": ["01_financial_audit_2026.pdf"],
+    "must_contain_in_context": ["HD-AUD-2026-FIN-001"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq017",
+    "question": "员工手册中竞业限制补偿金不低于离职前十二个月平均工资的多少比例？",
+    "tier": "high",
+    "expected_files": ["02_hr_handbook_dense.pdf"],
+    "must_contain_in_context": ["30%", "竞业限制"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq018",
+    "question": "绩效考核中 S 档（卓越）等级的比例上限是多少？",
+    "tier": "medium",
+    "expected_files": ["02_hr_handbook_dense.pdf"],
+    "must_contain_in_context": ["S", "5%"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq019",
+    "question": "BYOD 设备丢失或遭窃，员工须在几小时内报失并远程擦除企业容器数据？",
+    "tier": "high",
+    "expected_files": ["01_standard_policy.md"],
+    "must_contain_in_context": ["两小时", "BYOD"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq020",
+    "question": "集团 2026-Q2 信息安全合规节点验收截止日是哪一天？",
+    "tier": "medium",
+    "expected_files": ["01_standard_policy.md"],
+    "must_contain_in_context": ["2026 年 6 月 30 日", "2026-Q2"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq021",
+    "question": "2026 年特殊财务审计补丁的补丁编号是什么？",
+    "tier": "high",
+    "expected_files": ["02_boundary_cases.md"],
+    "must_contain_in_context": ["PATCH-AUD-20260301"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq022",
+    "question": "财务审计补丁通知中规定的误差容忍阈值是多少？",
+    "tier": "medium",
+    "expected_files": ["02_boundary_cases.md"],
+    "must_contain_in_context": ["0.00%"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq023",
+    "question": "今天上海天气怎么样？",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq024",
+    "question": "帮我写一首关于春天的七言绝句。",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq025",
+    "question": "特斯拉最新股价是多少？",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq026",
+    "question": "设备采购合同里，验收款占总价的比例是多少？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["25%", "验收款"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq027",
+    "question": "SM-080-A 伺服电机最终验收时，应该以多少 N·m 的扭矩为准？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["04-product-servo-motor.pdf"],
+    "must_contain_in_context": ["14.2", "实测"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq028",
+    "question": "员工想休年假，审批流程第一步应该找哪个部门？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["06-hr-attendance-normal.pdf"],
+    "must_contain_in_context": ["人力资源中心"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq029",
+    "question": "智能制造产线升级专项第三季度一共批复了多少预算？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["05-financial-budget-q3.pdf"],
+    "must_contain_in_context": ["12,345,000", "预算"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq030",
+    "question": "集团财务审计补丁对误差容忍度的要求是什么？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["02_boundary_cases.md"],
+    "must_contain_in_context": ["0.00%"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq031",
+    "question": "Delta 智能产线项目未通过验收时，合同尾款应如何处理？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["08-project-summary-delta.pdf", "07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["未通过验收", "尾款"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq032",
+    "question": "车间发生灼烫伤时，第一发现人首先要做什么？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["09-ops-emergency-dense.pdf"],
+    "must_contain_in_context": ["急停", "动力源"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq033",
+    "question": "SM-080-A 选型验收时，实测修正后的扭矩值是多少？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["04-product-servo-motor.pdf"],
+    "must_contain_in_context": ["14.2", "实测修正"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq034",
+    "question": "员工离职后竞业限制补偿金最低能拿到工资的多少比例？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["02_hr_handbook_dense.pdf"],
+    "must_contain_in_context": ["30%", "竞业限制"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq035",
+    "question": "2025 年第三季度各成本中心实际花了多少钱？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["05-financial-budget-q3.pdf"],
+    "must_contain_in_context": ["11,980,000", "执行"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq036",
+    "question": "发生机械伤害事故后，现场应急指挥的第一责任人是谁？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["09-ops-emergency-dense.pdf"],
+    "must_contain_in_context": ["车间主任"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq037",
+    "question": "Beta 测试机型在型号更替期间，研发权限如何隔离？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["03_edge_cases_symbols.pdf"],
+    "must_contain_in_context": ["Model-X9000-V2_Beta", "权限"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq038",
+    "question": "Delta 项目采购设备时依据的是哪份采购合同？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["08-project-summary-delta.pdf"],
+    "must_contain_in_context": ["CT-2025-ALPHA-09"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq039",
+    "question": "单笔对外付款超过多少金额需要 CFO 书面审批？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["01_financial_audit_2026.pdf"],
+    "must_contain_in_context": ["10万元", "CFO"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq040",
+    "question": "2026 年 IT 审计补丁的正式编号是什么？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["02_boundary_cases.md"],
+    "must_contain_in_context": ["PATCH-AUD-20260301"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq041",
+    "question": "个人 BYOD 手机丢失后，员工需要在多长时间内报失？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["01_standard_policy.md"],
+    "must_contain_in_context": ["两小时", "BYOD"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq042",
+    "question": "各子公司须在什么时候之前完成信息安全准则的本地化宣贯？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["01_standard_policy.md"],
+    "must_contain_in_context": ["2026 年 6 月 30 日", "2026-Q2"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq043",
+    "question": "绩效考核里卓越等级最多能占多少比例？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["02_hr_handbook_dense.pdf"],
+    "must_contain_in_context": ["S", "5%"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq044",
+    "question": "智能产线设备验收需要连续无故障运行多少天？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["连续无故障运行", "30"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq045",
+    "question": "第三季度成本中心合计实际支出是多少？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["05-financial-budget-q3.pdf"],
+    "must_contain_in_context": ["11,980,000"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq046",
+    "question": "2027 年第三季度智能制造产线升级专项预算批复金额是多少？",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq047",
+    "question": "公司员工年假一般可以休几天？",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq048",
+    "question": "帮我写一个爬取新闻网站的 Python 脚本。",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq049",
+    "question": "2024 版考勤制度规定休假审批由哪个部门归档？",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq050",
+    "question": "华为 Mate 70 Pro 现在卖多少钱？",
+    "tier": "low",
+    "expected_files": [],
+    "must_contain_in_context": [],
+    "should_refuse": true
+  },
+  {
+    "id": "gq051",
+    "question": "伺服电机最终验收应该以多少扭矩为准？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["04-product-servo-motor.pdf"],
+    "must_contain_in_context": ["14.2", "实测"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq052",
+    "question": "集团规定单笔对外付款超过多少须 CFO 书面签批？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["01_financial_audit_2026.pdf"],
+    "must_contain_in_context": ["10万元", "CFO"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq053",
+    "question": "设备采购合同规定的最终验收标准是什么？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["连续无故障运行", "30"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq054",
+    "question": "财务审计补丁对差异率的容忍上限是多少？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["02_boundary_cases.md"],
+    "must_contain_in_context": ["0.00%"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq055",
+    "question": "Delta 项目验收失败的原因及相关采购合同编号分别是什么？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["08-project-summary-delta.pdf", "07-contract-project-alpha.pdf"],
+    "must_contain_in_context": ["未通过验收", "CT-2025-ALPHA-09"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq056",
+    "question": "员工请假审批第一步应该找哪个部门？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["06-hr-attendance-normal.pdf"],
+    "must_contain_in_context": ["人力资源中心"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq057",
+    "question": "第三季度预算批复与实际执行金额分别是多少？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["05-financial-budget-q3.pdf"],
+    "must_contain_in_context": ["12,345,000", "11,980,000"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq058",
+    "question": "测试机型与量产机型在研发权限上如何隔离？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["03_edge_cases_symbols.pdf"],
+    "must_contain_in_context": ["Beta", "权限"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq059",
+    "question": "智能产线项目为什么拒绝支付尾款？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["08-project-summary-delta.pdf"],
+    "must_contain_in_context": ["主轴重复定位精度", "未通过验收"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq060",
+    "question": "SM-080-A 的理论计算扭矩和实测验收扭矩分别是多少？",
+    "tier": "high",
+    "query_group": "hard",
+    "expected_files": ["04-product-servo-motor.pdf"],
+    "must_contain_in_context": ["12.5", "14.2"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq061",
+    "question": "生产现场发生灼烫伤，第一发现人应立即做什么？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["09-ops-emergency-dense.pdf"],
+    "must_contain_in_context": ["急停"],
+    "should_refuse": false
+  },
+  {
+    "id": "gq062",
+    "question": "审计补丁执行窗口期间禁止哪些财务操作？",
+    "tier": "medium",
+    "query_group": "hard",
+    "expected_files": ["02_boundary_cases.md"],
+    "must_contain_in_context": ["手工凭证", "过账"],
+    "should_refuse": false
+  }
+]

@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
+from app.core.config import settings
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.schemas.chat import ChatRequest, Citation
@@ -21,6 +22,11 @@ from app.services.chat_service import (
     parse_citations,
     persist_chat_messages,
     prepare_conversation_and_history,
+)
+from app.services.confidence_gate import (
+    REFUSAL_MESSAGE,
+    decide_gate,
+    extract_top1_score,
 )
 from app.services.llm import (
     LatexStreamSanitizer,
@@ -78,13 +84,35 @@ async def chat_stream(
 
     # 完整保留混合检索原始 Top-5 分块，供后台审计落库使用
     retrieved_chunks: List[Dict[str, Any]] = await hybrid_search(question, limit=5)
-    prompt = build_rag_prompt(question, history_text, retrieved_chunks)
+
+    confidence_score: float | None = extract_top1_score(
+        retrieved_chunks,
+        settings.CONFIDENCE_SCORE_FIELD,
+    )
+    if settings.CONFIDENCE_GATE_ENABLED:
+        gate_decision = decide_gate(
+            confidence_score,
+            bool(retrieved_chunks),
+            settings.CONFIDENCE_HIGH_THRESHOLD,
+            settings.CONFIDENCE_LOW_THRESHOLD,
+        )
+    else:
+        gate_decision = "normal"
+
+    if gate_decision == "refuse":
+        prompt = None
+    elif gate_decision == "cautious":
+        prompt = build_rag_prompt(question, history_text, retrieved_chunks, mode="cautious")
+    else:
+        prompt = build_rag_prompt(question, history_text, retrieved_chunks, mode="normal")
 
     logger.info(
-        "[SSE Chat] Session: %s | History Chunks: %d | Retrieval Count: %d",
+        "[SSE Chat] Session: %s | History Chunks: %d | Retrieval Count: %d | Gate: %s | Score: %s",
         session_id,
         history_count,
         len(retrieved_chunks),
+        gate_decision,
+        confidence_score,
     )
 
     async def event_generator() -> AsyncIterator[str]:
@@ -95,33 +123,41 @@ async def chat_stream(
         latex_sanitizer = LatexStreamSanitizer()
 
         try:
-            async for token in stream_ollama_generate(prompt):
-                if await request.is_disconnected():
-                    disconnected = True
-                    logger.warning("[SSE Chat] 客户端断开 | session_id=%s", session_id)
-                    break
+            if gate_decision == "refuse":
+                full_answer = REFUSAL_MESSAGE
+                payload = json.dumps(
+                    {"type": "token", "content": REFUSAL_MESSAGE},
+                    ensure_ascii=False,
+                )
+                yield f"data: {payload}\n\n"
+            else:
+                async for token in stream_ollama_generate(prompt):
+                    if await request.is_disconnected():
+                        disconnected = True
+                        logger.warning("[SSE Chat] 客户端断开 | session_id=%s", session_id)
+                        break
 
-                clean_token = latex_sanitizer.feed(token)
-                if clean_token:
+                    clean_token = latex_sanitizer.feed(token)
+                    if clean_token:
+                        payload = json.dumps(
+                            {"type": "token", "content": clean_token},
+                            ensure_ascii=False,
+                        )
+                        yield f"data: {payload}\n\n"
+
+                flush_token = latex_sanitizer.flush()
+                if flush_token and not disconnected:
                     payload = json.dumps(
-                        {"type": "token", "content": clean_token},
+                        {"type": "token", "content": flush_token},
                         ensure_ascii=False,
                     )
                     yield f"data: {payload}\n\n"
 
-            flush_token = latex_sanitizer.flush()
-            if flush_token and not disconnected:
-                payload = json.dumps(
-                    {"type": "token", "content": flush_token},
-                    ensure_ascii=False,
-                )
-                yield f"data: {payload}\n\n"
-
-            # 对完整原文做最终 LaTeX 净化，确保落库与合规校验使用纯文本版本
-            full_answer = sanitize_latex_math(latex_sanitizer.raw_text)
+                # 对完整原文做最终 LaTeX 净化，确保落库与合规校验使用纯文本版本
+                full_answer = sanitize_latex_math(latex_sanitizer.raw_text)
 
             # 流式吐字结束后，Python 数值安全垫二次校验（不破坏 SSE 主流程）
-            if full_answer and not disconnected:
+            if full_answer and not disconnected and gate_decision != "refuse":
                 intercepted, append_suffix, replacement_message = validate_numerical_compliance(
                     question,
                     retrieved_chunks,
@@ -172,11 +208,14 @@ async def chat_stream(
             persist_success: bool = False
             assistant_message_id: int | None = None
             if question:
-                citations = (
-                    parse_citations(answer_to_save, retrieved_chunks)
-                    if answer_to_save
-                    else []
-                )
+                if gate_decision == "refuse":
+                    citations = []
+                else:
+                    citations = (
+                        parse_citations(answer_to_save, retrieved_chunks)
+                        if answer_to_save
+                        else []
+                    )
                 try:
                     assistant_message_id = await run_in_threadpool(
                         persist_chat_messages,
@@ -202,6 +241,8 @@ async def chat_stream(
                         retrieved_chunks,
                         answer_to_save,
                         citations,
+                        confidence_score,
+                        gate_decision,
                     )
 
             if not disconnected and not ollama_error and answer_to_save:
